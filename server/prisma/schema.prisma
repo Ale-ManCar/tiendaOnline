@@ -67,21 +67,37 @@ enum InventoryMovementType {
 }
 
 model User {
-  id              String        @id @default(uuid()) @db.Uuid
-  name            String        @db.VarChar(120)
-  email           String        @unique @db.VarChar(255)
-  passwordHash    String        @map("password_hash") @db.VarChar(255)
-  role            UserRole      @default(CUSTOMER)
-  status          AccountStatus @default(PENDING_VERIFICATION)
-  emailVerifiedAt DateTime?     @map("email_verified_at")
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
+  id              String           @id @default(uuid()) @db.Uuid
+  name            String           @db.VarChar(120)
+  email           String           @unique @db.VarChar(255)
+  passwordHash    String           @map("password_hash") @db.VarChar(255)
+  role            UserRole         @default(CUSTOMER)
+  status          AccountStatus    @default(PENDING_VERIFICATION)
+  emailVerifiedAt DateTime?        @map("email_verified_at")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
   addresses       Address[]
   carts           Cart[]
   orders          Order[]
   auditEvents     AuditEvent[]
+  refreshSessions RefreshSession[]
 
   @@map("users")
+}
+
+model RefreshSession {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @map("token_hash") @db.VarChar(255)
+  userAgent String?   @map("user_agent") @db.VarChar(500)
+  ipAddress String?   @map("ip_address") @db.VarChar(45)
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("refresh_sessions")
 }
 
 model Address {
