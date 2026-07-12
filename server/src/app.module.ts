@@ -9,6 +9,7 @@ import { AuthModule } from './auth/auth.module';
 import { AuthGuard } from './auth/auth.guard';
 import { RolesGuard } from './auth/roles.guard';
 import { CatalogModule } from './catalog/catalog.module';
+import { OrdersModule } from './orders/orders.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { CatalogModule } from './catalog/catalog.module';
     DatabaseModule,
     AuthModule,
     CatalogModule,
+    OrdersModule,
   ],
   controllers: [AppController],
   providers: [

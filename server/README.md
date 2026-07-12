@@ -17,6 +17,8 @@ Authentication endpoints are available under `/api/v1/auth`: `register`, `login`
 
 Public catalog endpoints are `GET /api/v1/catalog/categories`, `GET /api/v1/catalog/products`, and `GET /api/v1/catalog/products/:id`. The product collection supports search, category slug, price range, featured, availability, sorting, and pagination parameters. The seed command creates a small starter catalog idempotently.
 
+Authenticated checkout starts with `POST /api/v1/orders`. The client sends variant IDs and quantities; the API calculates prices, tax, and totals from PostgreSQL, validates stock, decrements stock, and stores an immutable order snapshot.
+
 ## Verification
 
 - `npx prisma validate`
