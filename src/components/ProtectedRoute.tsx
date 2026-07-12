@@ -1,0 +1,1 @@
+import type{ReactNode}from'react';import{Navigate}from'react-router-dom';import{useStore}from'../context/StoreContext';export function ProtectedRoute({children,admin=false}:{children:ReactNode;admin?:boolean}){const{currentUser}=useStore();if(!currentUser)return <Navigate to="/" replace/>;if(admin&&currentUser.role!=='admin')return <Navigate to="/404" replace/>;return children}

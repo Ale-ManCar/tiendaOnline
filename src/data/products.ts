@@ -1,6 +1,6 @@
 import type { Product } from '../types';
 
-export const seedProducts: Product[] = [
+export const seedProducts: Partial<Product>[] = [
   {
     id: 'p-001',
     name: 'Audífonos Pulse Pro',

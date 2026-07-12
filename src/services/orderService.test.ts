@@ -1,0 +1,1 @@
+import {describe,expect,it} from 'vitest';import {calculateOrder} from './orderService';describe('order totals',()=>{it('calculates 15% VAT',()=>expect(calculateOrder([{price:10,quantity:2},{price:5,quantity:1}])).toEqual({subtotal:25,tax:3.75,total:28.75}))});

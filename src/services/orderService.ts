@@ -1,0 +1,1 @@
+import type {OrderItem} from '../types';export const roundMoney=(n:number)=>Number(n.toFixed(2));export function calculateOrder(items:Pick<OrderItem,'price'|'quantity'>[]){const subtotal=roundMoney(items.reduce((s,i)=>s+i.price*i.quantity,0)),tax=roundMoney(subtotal*.15);return{subtotal,tax,total:roundMoney(subtotal+tax)}}

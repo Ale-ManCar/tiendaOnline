@@ -1,37 +1,19 @@
 # Nova Store
 
-Tienda en línea frontend desarrollada con React, TypeScript y Vite. Implementa los requisitos funcionales del documento académico: registro, inicio de sesión, catálogo, búsqueda, carrito, cálculo del total, checkout simulado, confirmación, historial de pedidos y administración de productos.
+E-commerce académico frontend construido con React, TypeScript, Vite, React Router y LocalStorage. Incluye catálogo, filtros, detalle, registro e inicio de sesión, carrito de invitado y por usuario, checkout con IVA del 15%, historial de pedidos y administración de productos, categorías, pedidos y usuarios.
 
-## Requisitos
+## Desarrollo
 
-- Node.js 20 o superior
-- npm 10 o superior
+Requiere Node.js 22. Ejecuta `npm ci`, `npm run dev`, `npm test`, `npm run test:coverage` y `npm run build`. Demo administrativa: `admin@tienda.com` / `Admin123*`. Para reiniciar la demo, elimina las claves `nova_*` desde LocalStorage.
 
-## Ejecutar el proyecto
-
-```bash
-npm install
-npm run dev
-```
-
-Abrir la dirección mostrada por Vite, normalmente `http://localhost:5173`.
-
-## Compilar para producción
-
-```bash
-npm run build
-npm run preview
-```
-
-## Acceso de administrador
-
-- Correo: `admin@tienda.com`
-- Contraseña: `Admin123*`
+La aplicación usa `HashRouter` porque GitHub Pages no reescribe rutas hacia `index.html`. Vite conserva `base: '/tiendaOnline/'`; una pantalla en blanco suele indicar que el nombre del repositorio y ese base no coinciden. El workflow publica únicamente `dist` después de pruebas y build.
 
 ## Persistencia
 
-Los usuarios, productos, carrito y pedidos se almacenan en `localStorage`. El pago es una simulación académica y no procesa dinero real.
+Los datos se guardan en envoltorios `{ version, data }`, se leen defensivamente y se migran desde las estructuras antiguas. Cada cuenta dispone de un carrito independiente; el carrito invitado se combina al iniciar sesión sin superar existencias.
 
-## Restablecer datos
+## Security limitations of the academic version
 
-Abre las herramientas de desarrollo del navegador, entra en **Application > Local Storage** y elimina las claves que comienzan con `nova_`.
+Esta autenticación es una simulación. LocalStorage puede ser leído o modificado con las herramientas del navegador y un hash frontend no sustituye autenticación segura. No se guardan datos de tarjeta. Producción requiere backend, base de datos, HTTPS, Argon2/bcrypt, sesiones seguras, autorización y validación del lado servidor, rate limiting, cabeceras de seguridad, logs, monitoreo, copias de seguridad, auditoría y una pasarela de pagos real.
+
+Consulta [arquitectura](docs/architecture.md), [modelo de datos](docs/data-model.md), [pruebas](docs/testing.md), [despliegue](docs/deployment.md) y [limitaciones](docs/limitations.md).

@@ -1,207 +1,38 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { seedProducts } from '../data/products';
-import type { CartItem, Order, OrderStatus, PaymentMethod, Product, ShippingData, User } from '../types';
-import { hashPassword, readStorage, uid, writeStorage } from '../utils/storage';
-
-interface StoreContextValue {
-  products: Product[];
-  users: User[];
-  currentUser: User | null;
-  cart: CartItem[];
-  orders: Order[];
-  cartCount: number;
-  cartSubtotal: number;
-  register: (name: string, email: string, password: string) => { ok: boolean; message: string };
-  login: (email: string, password: string) => { ok: boolean; message: string };
-  logout: () => void;
-  addToCart: (productId: string, quantity?: number) => { ok: boolean; message: string };
-  updateCartQuantity: (productId: string, quantity: number) => void;
-  removeFromCart: (productId: string) => void;
-  clearCart: () => void;
-  createOrder: (shipping: ShippingData, paymentMethod: PaymentMethod) => Order;
-  addProduct: (product: Omit<Product, 'id'>) => void;
-  updateProduct: (product: Product) => void;
-  deleteProduct: (productId: string) => void;
-  updateOrderStatus: (orderId: string, status: OrderStatus) => void;
-}
-
-const StoreContext = createContext<StoreContextValue | undefined>(undefined);
-
-const KEYS = {
-  products: 'nova_products',
-  users: 'nova_users',
-  currentUser: 'nova_current_user',
-  cart: 'nova_cart',
-  orders: 'nova_orders',
-};
-
-const adminUser: User = {
-  id: 'user-admin',
-  name: 'Administrador',
-  email: 'admin@tienda.com',
-  passwordHash: hashPassword('Admin123*'),
-  role: 'admin',
-};
-
-export function StoreProvider({ children }: { children: ReactNode }) {
-  const [products, setProducts] = useState<Product[]>(() => readStorage(KEYS.products, seedProducts));
-  const [users, setUsers] = useState<User[]>(() => {
-    const stored = readStorage<User[]>(KEYS.users, []);
-    return stored.some((user) => user.email === adminUser.email) ? stored : [adminUser, ...stored];
-  });
-  const [currentUser, setCurrentUser] = useState<User | null>(() => readStorage<User | null>(KEYS.currentUser, null));
-  const [cart, setCart] = useState<CartItem[]>(() => readStorage(KEYS.cart, []));
-  const [orders, setOrders] = useState<Order[]>(() => readStorage(KEYS.orders, []));
-
-  useEffect(() => writeStorage(KEYS.products, products), [products]);
-  useEffect(() => writeStorage(KEYS.users, users), [users]);
-  useEffect(() => writeStorage(KEYS.currentUser, currentUser), [currentUser]);
-  useEffect(() => writeStorage(KEYS.cart, cart), [cart]);
-  useEffect(() => writeStorage(KEYS.orders, orders), [orders]);
-
-  const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-  const cartSubtotal = cart.reduce((sum, item) => {
-    const product = products.find((candidate) => candidate.id === item.productId);
-    return sum + (product?.price ?? 0) * item.quantity;
-  }, 0);
-
-  const register = (name: string, email: string, password: string) => {
-    const normalizedEmail = email.trim().toLowerCase();
-    if (users.some((user) => user.email === normalizedEmail)) {
-      return { ok: false, message: 'Ya existe una cuenta con este correo.' };
-    }
-    const user: User = {
-      id: uid('user'),
-      name: name.trim(),
-      email: normalizedEmail,
-      passwordHash: hashPassword(password),
-      role: 'customer',
-    };
-    setUsers((previous) => [...previous, user]);
-    setCurrentUser(user);
-    return { ok: true, message: 'Cuenta creada correctamente.' };
-  };
-
-  const login = (email: string, password: string) => {
-    const user = users.find(
-      (candidate) => candidate.email === email.trim().toLowerCase() && candidate.passwordHash === hashPassword(password),
-    );
-    if (!user) return { ok: false, message: 'Correo o contraseña incorrectos.' };
-    setCurrentUser(user);
-    return { ok: true, message: `Bienvenido, ${user.name}.` };
-  };
-
-  const logout = () => setCurrentUser(null);
-
-  const addToCart = (productId: string, quantity = 1) => {
-    const product = products.find((candidate) => candidate.id === productId);
-    if (!product || product.stock <= 0) return { ok: false, message: 'Producto sin stock disponible.' };
-    const currentQuantity = cart.find((item) => item.productId === productId)?.quantity ?? 0;
-    if (currentQuantity + quantity > product.stock) {
-      return { ok: false, message: `Solo hay ${product.stock} unidades disponibles.` };
-    }
-    setCart((previous) => {
-      const exists = previous.some((item) => item.productId === productId);
-      return exists
-        ? previous.map((item) => (item.productId === productId ? { ...item, quantity: item.quantity + quantity } : item))
-        : [...previous, { productId, quantity }];
-    });
-    return { ok: true, message: 'Producto agregado al carrito.' };
-  };
-
-  const updateCartQuantity = (productId: string, quantity: number) => {
-    const product = products.find((candidate) => candidate.id === productId);
-    if (!product) return;
-    const safeQuantity = Math.max(1, Math.min(quantity, product.stock));
-    setCart((previous) => previous.map((item) => (item.productId === productId ? { ...item, quantity: safeQuantity } : item)));
-  };
-
-  const removeFromCart = (productId: string) => setCart((previous) => previous.filter((item) => item.productId !== productId));
-  const clearCart = () => setCart([]);
-
-  const createOrder = (shipping: ShippingData, paymentMethod: PaymentMethod) => {
-    if (!currentUser) throw new Error('Debes iniciar sesión para comprar.');
-    if (cart.length === 0) throw new Error('El carrito está vacío.');
-
-    const items = cart.map((item) => {
-      const product = products.find((candidate) => candidate.id === item.productId);
-      if (!product || product.stock < item.quantity) throw new Error('Uno de los productos no tiene stock suficiente.');
-      return {
-        productId: product.id,
-        name: product.name,
-        price: product.price,
-        quantity: item.quantity,
-        image: product.image,
-      };
-    });
-
-    const subtotal = Number(items.reduce((sum, item) => sum + item.price * item.quantity, 0).toFixed(2));
-    const tax = Number((subtotal * 0.15).toFixed(2));
-    const total = Number((subtotal + tax).toFixed(2));
-    const order: Order = {
-      id: `NV-${Date.now().toString().slice(-8)}`,
-      userId: currentUser.id,
-      createdAt: new Date().toISOString(),
-      items,
-      subtotal,
-      tax,
-      total,
-      paymentMethod,
-      shipping,
-      status: 'Pendiente',
-    };
-
-    setOrders((previous) => [order, ...previous]);
-    setProducts((previous) =>
-      previous.map((product) => {
-        const ordered = items.find((item) => item.productId === product.id);
-        return ordered ? { ...product, stock: product.stock - ordered.quantity } : product;
-      }),
-    );
-    clearCart();
-    return order;
-  };
-
-  const addProduct = (product: Omit<Product, 'id'>) => setProducts((previous) => [{ ...product, id: uid('product') }, ...previous]);
-  const updateProduct = (product: Product) => setProducts((previous) => previous.map((candidate) => (candidate.id === product.id ? product : candidate)));
-  const deleteProduct = (productId: string) => {
-    setProducts((previous) => previous.filter((product) => product.id !== productId));
-    setCart((previous) => previous.filter((item) => item.productId !== productId));
-  };
-  const updateOrderStatus = (orderId: string, status: OrderStatus) => {
-    setOrders((previous) => previous.map((order) => (order.id === orderId ? { ...order, status } : order)));
-  };
-
-  const value = useMemo<StoreContextValue>(
-    () => ({
-      products,
-      users,
-      currentUser,
-      cart,
-      orders,
-      cartCount,
-      cartSubtotal,
-      register,
-      login,
-      logout,
-      addToCart,
-      updateCartQuantity,
-      removeFromCart,
-      clearCart,
-      createOrder,
-      addProduct,
-      updateProduct,
-      deleteProduct,
-      updateOrderStatus,
-    }),
-    [products, users, currentUser, cart, orders, cartCount, cartSubtotal],
-  );
-
-  return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
-}
-
-export function useStore() {
-  const context = useContext(StoreContext);
-  if (!context) throw new Error('useStore debe utilizarse dentro de StoreProvider.');
-  return context;
-}
+import {createContext,useContext,useEffect,useMemo,useState,type ReactNode} from 'react';
+import {seedProducts} from '../data/products';
+import type {CartItem,Category,Order,OrderStatus,PaymentMethod,Product,Result,ShippingData,User} from '../types';
+import {cartKey,hashPassword,KEYS,readStorage,uid,writeStorage} from '../utils/storage';
+const now=()=>new Date().toISOString();
+const categoriesSeed=['Tecnología','Accesorios','Moda','Hogar','Bienestar'].map((name,i)=>({id:`cat-${i+1}`,name,slug:name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(),active:true,createdAt:now()}));
+const migrateProduct=(p:Partial<Product>,i:number):Product=>({id:p.id??uid('product'),name:p.name??'Producto',description:p.description??'',category:p.category??'Sin categoría',categoryId:p.categoryId,price:Number(p.price)||0,stock:Math.max(0,Math.trunc(Number(p.stock)||0)),image:p.image??'',featured:Boolean(p.featured),sku:p.sku??`NOVA-${String(i+1).padStart(3,'0')}`,active:p.active??true,createdAt:p.createdAt??now(),updatedAt:p.updatedAt??now()});
+const admin:User={id:'user-admin',name:'Administrador',email:'admin@tienda.com',passwordHash:hashPassword('Admin123*'),role:'admin',active:true,createdAt:now()};
+interface StoreValue{products:Product[];users:User[];categories:Category[];currentUser:User|null;cart:CartItem[];orders:Order[];cartCount:number;cartSubtotal:number;register:(n:string,e:string,p:string)=>Result;login:(e:string,p:string)=>Result;logout:()=>void;addToCart:(id:string,q?:number)=>Result;updateCartQuantity:(id:string,q:number)=>Result;removeFromCart:(id:string)=>void;clearCart:()=>void;createOrder:(s:ShippingData,m:PaymentMethod,reference?:string)=>Order;addProduct:(p:Omit<Product,'id'|'createdAt'|'updatedAt'>)=>Result;updateProduct:(p:Product)=>Result;deleteProduct:(id:string)=>Result;addCategory:(c:Omit<Category,'id'|'createdAt'|'slug'>)=>Result;updateCategory:(c:Category)=>Result;deleteCategory:(id:string)=>Result;updateOrderStatus:(id:string,s:OrderStatus)=>Result;toggleUser:(id:string)=>Result}
+const Context=createContext<StoreValue|undefined>(undefined);
+export function StoreProvider({children}:{children:ReactNode}){
+ const [products,setProducts]=useState<Product[]>(()=>readStorage<Partial<Product>[]>(KEYS.products,seedProducts).map(migrateProduct));
+ const [users,setUsers]=useState<User[]>(()=>{const u=readStorage<Partial<User>[]>(KEYS.users,[]).map(x=>({...x,active:x.active??true,createdAt:x.createdAt??now()} as User));return u.some(x=>x.email===admin.email)?u:[admin,...u]});
+ const [categories,setCategories]=useState<Category[]>(()=>readStorage(KEYS.categories,categoriesSeed));
+ const [currentUser,setCurrentUser]=useState<User|null>(()=>{const s=readStorage<User|null>(KEYS.session,null);return s&&typeof s.id==='string'?s:null});
+ const [cart,setCart]=useState<CartItem[]>(()=>readStorage(cartKey(readStorage<User|null>(KEYS.session,null)?.id),readStorage(KEYS.legacyCart,[])));
+ const [orders,setOrders]=useState<Order[]>(()=>readStorage(KEYS.orders,[]));
+ useEffect(()=>writeStorage(KEYS.products,products),[products]);useEffect(()=>writeStorage(KEYS.users,users),[users]);useEffect(()=>writeStorage(KEYS.categories,categories),[categories]);useEffect(()=>writeStorage(KEYS.session,currentUser),[currentUser]);useEffect(()=>writeStorage(KEYS.orders,orders),[orders]);useEffect(()=>writeStorage(cartKey(currentUser?.id),cart),[cart,currentUser]);
+ useEffect(()=>setCart(old=>old.filter(i=>{const p=products.find(x=>x.id===i.productId);return p?.active&&i.quantity>0}).map(i=>({...i,quantity:Math.min(i.quantity,products.find(p=>p.id===i.productId)?.stock??0)})).filter(i=>i.quantity>0)),[products]);
+ const register=(name:string,email:string,password:string):Result=>{email=email.trim().toLowerCase();if(users.some(u=>u.email===email))return{ok:false,message:'Ya existe una cuenta con este correo.'};const u:User={id:uid('user'),name:name.trim(),email,passwordHash:hashPassword(password),role:'customer',active:true,createdAt:now()};setUsers(x=>[...x,u]);const guest=readStorage<CartItem[]>(cartKey(),[]);setCurrentUser(u);setCart(mergeCarts([],guest,products));return{ok:true,message:'Cuenta creada e inicio de sesión correcto.'}};
+ const login=(email:string,password:string):Result=>{const u=users.find(x=>x.email===email.trim().toLowerCase()&&x.passwordHash===hashPassword(password));if(!u)return{ok:false,message:'Correo o contraseña incorrectos.'};if(!u.active)return{ok:false,message:'Esta cuenta está desactivada.'};const own=readStorage<CartItem[]>(cartKey(u.id),[]),guest=readStorage<CartItem[]>(cartKey(),[]);setCurrentUser(u);setCart(mergeCarts(own,guest,products));writeStorage(cartKey(),[]);return{ok:true,message:`Bienvenido, ${u.name}.`}};
+ const logout=()=>{setCurrentUser(null);setCart(readStorage(cartKey(),[]))};
+ const addToCart=(id:string,q=1):Result=>{const p=products.find(x=>x.id===id&&x.active);if(!p||p.stock<1)return{ok:false,message:'Producto no disponible.'};const current=cart.find(x=>x.productId===id)?.quantity??0;if(!Number.isInteger(q)||q<1||current+q>p.stock)return{ok:false,message:`Solo hay ${p.stock} unidades disponibles.`};setCart(x=>x.some(i=>i.productId===id)?x.map(i=>i.productId===id?{...i,quantity:i.quantity+q}:i):[...x,{productId:id,quantity:q}]);return{ok:true,message:'Producto agregado al carrito.'}};
+ const updateCartQuantity=(id:string,q:number):Result=>{const p=products.find(x=>x.id===id);if(!p||!Number.isInteger(q)||q<1||q>p.stock)return{ok:false,message:`Cantidad válida: 1 a ${p?.stock??0}.`};setCart(x=>x.map(i=>i.productId===id?{...i,quantity:q}:i));return{ok:true,message:'Cantidad actualizada.'}};
+ const createOrder=(shipping:ShippingData,paymentMethod:PaymentMethod,paymentReference?:string)=>{if(!currentUser)throw Error('Debes iniciar sesión.');const items=cart.map(i=>{const p=products.find(x=>x.id===i.productId&&x.active);if(!p||p.stock<i.quantity)throw Error('El stock cambió. Revisa tu carrito.');return{productId:p.id,name:p.name,price:p.price,quantity:i.quantity,image:p.image}});if(!items.length)throw Error('El carrito está vacío.');const subtotal=round(items.reduce((s,i)=>s+i.price*i.quantity,0)),tax=round(subtotal*.15),date=now();const order:Order={id:`NV-${uid('').replace(/[^a-z0-9]/gi,'').slice(-12).toUpperCase()}`,userId:currentUser.id,customerName:shipping.fullName,customerEmail:shipping.email,createdAt:date,items,subtotal,tax,total:round(subtotal+tax),paymentMethod,paymentReference:paymentMethod==='Transferencia'?paymentReference:undefined,shipping,status:'Pendiente',statusHistory:[{status:'Pendiente',date}],notes:shipping.notes};setProducts(ps=>ps.map(p=>{const i=items.find(x=>x.productId===p.id);return i?{...p,stock:p.stock-i.quantity,updatedAt:date}:p}));setOrders(os=>[order,...os]);setCart([]);return order};
+ const addProduct=(p:Omit<Product,'id'|'createdAt'|'updatedAt'>):Result=>{if(products.some(x=>x.sku.toLowerCase()===p.sku.trim().toLowerCase()))return{ok:false,message:'El SKU ya existe.'};setProducts(x=>[migrateProduct({...p,id:uid('product')},x.length),...x]);return{ok:true,message:'Producto creado.'}};
+ const updateProduct=(p:Product):Result=>{if(products.some(x=>x.id!==p.id&&x.sku.toLowerCase()===p.sku.toLowerCase()))return{ok:false,message:'El SKU ya existe.'};setProducts(x=>x.map(i=>i.id===p.id?{...p,updatedAt:now()}:i));return{ok:true,message:'Producto actualizado.'}};
+ const deleteProduct=(id:string):Result=>{setProducts(x=>x.filter(p=>p.id!==id));return{ok:true,message:'Producto eliminado de catálogo y carritos.'}};
+ const addCategory=(c:Omit<Category,'id'|'createdAt'|'slug'>):Result=>{const slug=slugify(c.name);if(categories.some(x=>x.slug===slug))return{ok:false,message:'La categoría ya existe.'};setCategories(x=>[...x,{...c,name:c.name.trim(),slug,id:uid('cat'),createdAt:now()}]);return{ok:true,message:'Categoría creada.'}};
+ const updateCategory=(c:Category):Result=>{if(categories.some(x=>x.id!==c.id&&(x.slug===c.slug||x.name.toLowerCase()===c.name.toLowerCase())))return{ok:false,message:'Nombre o slug duplicado.'};setCategories(x=>x.map(i=>i.id===c.id?c:i));return{ok:true,message:'Categoría actualizada.'}};
+ const deleteCategory=(id:string):Result=>{const c=categories.find(x=>x.id===id);if(c&&products.some(p=>p.category===c.name||p.categoryId===id))return{ok:false,message:'No se puede eliminar: tiene productos asignados.'};setCategories(x=>x.filter(c=>c.id!==id));return{ok:true,message:'Categoría eliminada.'}};
+ const updateOrderStatus=(id:string,status:OrderStatus):Result=>{setOrders(x=>x.map(o=>o.id===id?{...o,status,statusHistory:[...(o.statusHistory??[]),{status,date:now()}]}:o));return{ok:true,message:'Estado actualizado.'}};
+ const toggleUser=(id:string):Result=>{if(id===admin.id)return{ok:false,message:'No se puede desactivar al administrador principal.'};setUsers(x=>x.map(u=>u.id===id?{...u,active:!u.active}:u));return{ok:true,message:'Estado de cuenta actualizado.'}};
+ const cartSubtotal=round(cart.reduce((s,i)=>s+(products.find(p=>p.id===i.productId)?.price??0)*i.quantity,0));
+ const value=useMemo(()=>({products,users,categories,currentUser,cart,orders,cartCount:cart.reduce((s,i)=>s+i.quantity,0),cartSubtotal,register,login,logout,addToCart,updateCartQuantity,removeFromCart:(id:string)=>setCart(x=>x.filter(i=>i.productId!==id)),clearCart:()=>setCart([]),createOrder,addProduct,updateProduct,deleteProduct,addCategory,updateCategory,deleteCategory,updateOrderStatus,toggleUser}),[products,users,categories,currentUser,cart,orders,cartSubtotal]);return <Context.Provider value={value}>{children}</Context.Provider>}
+const round=(n:number)=>Number(n.toFixed(2));const slugify=(s:string)=>s.trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+function mergeCarts(a:CartItem[],b:CartItem[],products:Product[]){const map=new Map<string,number>();[...a,...b].forEach(i=>map.set(i.productId,(map.get(i.productId)??0)+i.quantity));return [...map].flatMap(([productId,q])=>{const p=products.find(x=>x.id===productId&&x.active);return p&&p.stock?[{productId,quantity:Math.min(q,p.stock)}]:[]})}
+export function useStore(){const c=useContext(Context);if(!c)throw Error('useStore debe utilizarse dentro de StoreProvider.');return c}

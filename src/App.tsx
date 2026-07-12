@@ -8,6 +8,7 @@ import { ConfirmationPage } from './pages/ConfirmationPage';
 import { HomePage } from './pages/HomePage';
 import { OrdersPage } from './pages/OrdersPage';
 import { ProductDetailPage } from './pages/ProductDetailPage';
+import {NotFoundPage} from './pages/NotFoundPage';import {ProtectedRoute} from './components/ProtectedRoute';
 
 export default function App() {
   return (
@@ -18,11 +19,11 @@ export default function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/catalogo" element={<CatalogPage />} />
             <Route path="/producto/:id" element={<ProductDetailPage />} />
-            <Route path="/checkout" element={<CheckoutPage />} />
-            <Route path="/confirmacion/:id" element={<ConfirmationPage />} />
-            <Route path="/pedidos" element={<OrdersPage />} />
-            <Route path="/admin" element={<AdminPage />} />
-            <Route path="*" element={<HomePage />} />
+            <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
+            <Route path="/confirmacion/:id" element={<ProtectedRoute><ConfirmationPage /></ProtectedRoute>} />
+            <Route path="/pedidos" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
+            <Route path="/admin" element={<ProtectedRoute admin><AdminPage /></ProtectedRoute>} />
+            <Route path="/404" element={<NotFoundPage/>}/><Route path="*" element={<NotFoundPage />} />
           </Route>
         </Routes>
       </StoreProvider>
