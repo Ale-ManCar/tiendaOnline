@@ -1,1 +1,1 @@
-import{defineConfig}from'vitest/config';export default defineConfig({test:{environment:'jsdom',coverage:{provider:'v8',reporter:['text','html'],include:['src/services/**','src/utils/**']}}})
+import{defineConfig}from'vitest/config';export default defineConfig({test:{environment:'jsdom',exclude:['server/**','node_modules/**','dist/**'],coverage:{provider:'v8',reporter:['text','html'],include:['src/services/**','src/utils/**']}}})

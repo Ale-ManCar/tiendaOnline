@@ -1,3 +1,5 @@
 # Arquitectura
 
-Monolito frontend modular: páginas y componentes consumen un contexto de aplicación; este coordina autenticación, catálogo, carritos y pedidos, y el adaptador de almacenamiento encapsula LocalStorage versionado. HashRouter mantiene compatibilidad con GitHub Pages. Una futura API puede reemplazar el contexto de persistencia manteniendo los contratos de dominio.
+Nova Store uses a modular-monolith strategy. The React/Vite storefront remains independently deployable, while `server/` provides a NestJS REST API backed by PostgreSQL and Prisma. API routes are versioned under `/api/v1`. Database access is isolated in a global database module; upcoming domain modules will own authentication, catalog, inventory, carts, orders, and payments. HashRouter keeps the storefront compatible with GitHub Pages during migration.
+
+LocalStorage is now a temporary compatibility adapter, not an authority. The server will calculate prices and taxes, validate inventory, authorize staff operations, and persist order/payment state. This boundary lets the frontend migrate feature by feature without a full rewrite.

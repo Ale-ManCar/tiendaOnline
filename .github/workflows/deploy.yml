@@ -35,10 +35,30 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run tests
+      - name: Run frontend tests
         run: npm test
 
-      - name: Build application
+      - name: Build frontend
+        run: npm run build
+
+      - name: Install backend dependencies
+        working-directory: server
+        run: npm ci
+
+      - name: Generate Prisma Client
+        working-directory: server
+        run: npx prisma generate
+
+      - name: Validate database schema
+        working-directory: server
+        run: npx prisma validate
+
+      - name: Test backend
+        working-directory: server
+        run: npm test -- --runInBand
+
+      - name: Build backend
+        working-directory: server
         run: npm run build
 
       - name: Configure GitHub Pages
