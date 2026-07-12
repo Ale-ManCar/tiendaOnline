@@ -3,66 +3,35 @@ import { Eye, EyeOff, X } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import type { ToastState } from './Toast';
 
-export function AuthModal({ open, onClose, notify }: { open: boolean; onClose: () => void; notify: (toast: ToastState) => void }) {
+export function AuthModal({ open, onClose, notify }: { open:boolean; onClose:()=>void; notify:(toast:ToastState)=>void }) {
   const { login, register } = useStore();
-  const [mode, setMode] = useState<'login' | 'register'>('login');
-  const [showPassword, setShowPassword] = useState(false);
-  const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' });
-  const [error, setError] = useState('');
+  const [mode,setMode]=useState<'login'|'register'>('login');
+  const [showPassword,setShowPassword]=useState(false);
+  const [submitting,setSubmitting]=useState(false);
+  const [error,setError]=useState('');
+  const [form,setForm]=useState({name:'',email:'',password:'',confirmPassword:''});
+  if(!open)return null;
 
-  if (!open) return null;
-
-  const handleSubmit = (event: FormEvent) => {
-    event.preventDefault();
-    setError('');
-    if (!form.email.includes('@')) return setError('Ingresa un correo válido.');
-    if (form.password.length < 8) return setError('La contraseña debe tener al menos 8 caracteres.');
-    if (mode === 'register') {
-      if (form.name.trim().length < 3) return setError('Ingresa tu nombre completo.');
-      if (form.password !== form.confirmPassword) return setError('Las contraseñas no coinciden.');
-      const result = register(form.name, form.email, form.password);
-      if (!result.ok) return setError(result.message);
-      notify({ message: result.message, type: 'success' });
-      onClose();
-      return;
+  const submit=async(event:FormEvent)=>{
+    event.preventDefault();setError('');
+    if(!form.email.includes('@'))return setError('Enter a valid email address.');
+    if(mode==='register'){
+      if(form.name.trim().length<3)return setError('Enter your full name.');
+      if(form.password.length<10||!/[A-Z]/.test(form.password)||!/[a-z]/.test(form.password)||!(/\d/.test(form.password))||!(/[^\w\s]/.test(form.password)))return setError('Use at least 10 characters with uppercase, lowercase, number, and symbol.');
+      if(form.password!==form.confirmPassword)return setError('Passwords do not match.');
     }
-    const result = login(form.email, form.password);
-    if (!result.ok) return setError(result.message);
-    notify({ message: result.message, type: 'success' });
-    onClose();
+    setSubmitting(true);
+    const result=mode==='register'?await register(form.name,form.email,form.password):await login(form.email,form.password);
+    setSubmitting(false);
+    if(!result.ok)return setError(result.message);
+    notify({message:result.message,type:'success'});onClose();
   };
 
-  return (
-    <div className="modal-backdrop" onMouseDown={onClose}>
-      <section className="auth-modal" onMouseDown={(event) => event.stopPropagation()} aria-modal="true" role="dialog">
-        <button className="icon-button modal-close" onClick={onClose} aria-label="Cerrar"><X /></button>
-        <div className="auth-head">
-          <span className="eyebrow">NOVA STORE</span>
-          <h2>{mode === 'login' ? 'Bienvenido de nuevo' : 'Crea tu cuenta'}</h2>
-          <p>{mode === 'login' ? 'Ingresa para continuar con tus compras.' : 'Regístrate y guarda tu historial de pedidos.'}</p>
-        </div>
-        <form onSubmit={handleSubmit} className="form-stack">
-          {mode === 'register' && (
-            <label>Nombre completo<input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Alejandro Mantilla" /></label>
-          )}
-          <label>Correo electrónico<input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="correo@ejemplo.com" /></label>
-          <label>Contraseña
-            <div className="password-field">
-              <input type={showPassword ? 'text' : 'password'} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="Mínimo 8 caracteres" />
-              <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label="Mostrar contraseña">{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
-            </div>
-          </label>
-          {mode === 'register' && (
-            <label>Confirmar contraseña<input type={showPassword ? 'text' : 'password'} value={form.confirmPassword} onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })} /></label>
-          )}
-          {error && <p className="form-error">{error}</p>}
-          <button className="button primary full" type="submit">{mode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}</button>
-        </form>
-        {mode === 'login' && <div className="demo-box"><strong>Acceso administrador</strong><span>admin@tienda.com · Admin123*</span></div>}
-        <button className="text-button" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); }}>
-          {mode === 'login' ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia sesión'}
-        </button>
-      </section>
-    </div>
-  );
+  return <div className="modal-backdrop" onMouseDown={onClose}><section className="auth-modal" onMouseDown={e=>e.stopPropagation()} aria-modal="true" role="dialog" aria-labelledby="auth-title"><button className="icon-button modal-close" onClick={onClose} aria-label="Close"><X/></button><div className="auth-head"><span className="eyebrow">NOVA STORE</span><h2 id="auth-title">{mode==='login'?'Welcome back':'Create your account'}</h2><p>{mode==='login'?'Sign in to continue shopping.':'Register to save your cart and orders.'}</p></div><form onSubmit={submit} className="form-stack">
+    {mode==='register'&&<label>Full name<input required autoComplete="name" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></label>}
+    <label>Email<input required type="email" autoComplete="email" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></label>
+    <label>Password<div className="password-field"><input required type={showPassword?'text':'password'} autoComplete={mode==='login'?'current-password':'new-password'} value={form.password} onChange={e=>setForm({...form,password:e.target.value})}/><button type="button" onClick={()=>setShowPassword(!showPassword)} aria-label={showPassword?'Hide password':'Show password'}>{showPassword?<EyeOff size={18}/>:<Eye size={18}/>}</button></div></label>
+    {mode==='register'&&<label>Confirm password<input required type={showPassword?'text':'password'} autoComplete="new-password" value={form.confirmPassword} onChange={e=>setForm({...form,confirmPassword:e.target.value})}/></label>}
+    {error&&<p className="form-error" role="alert">{error}</p>}<button className="button primary full" type="submit" disabled={submitting}>{submitting?'Processing…':mode==='login'?'Sign in':'Create account'}</button>
+  </form><button className="text-button" disabled={submitting} onClick={()=>{setMode(mode==='login'?'register':'login');setError('')}}>{mode==='login'?'Need an account? Register':'Already registered? Sign in'}</button></section></div>;
 }

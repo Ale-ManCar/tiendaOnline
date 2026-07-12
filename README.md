@@ -4,7 +4,8 @@ Nova Store is evolving into a production-oriented ecommerce platform. The existi
 
 ## Desarrollo
 
-Requires Node.js 22. For the storefront, run `npm ci`, `npm run dev`, `npm test`, and `npm run build`. For the API, follow [server/README.md](server/README.md). The legacy local demo credentials remain available only until server authentication replaces them.
+Requires Node.js 22. For the storefront, run `npm ci`, `npm run dev`, `npm test`, and `npm run build`. For the API, follow [server/README.md](server/README.md).
+Set `VITE_API_URL` to the public API base URL, including `/api/v1`. Authentication is restored from HTTP-only server cookies; browser code no longer stores or verifies passwords.
 
 La aplicación usa `HashRouter` porque GitHub Pages no reescribe rutas hacia `index.html`. Vite conserva `base: '/tiendaOnline/'`; una pantalla en blanco suele indicar que el nombre del repositorio y ese base no coinciden. El workflow publica únicamente `dist` después de pruebas y build.
 

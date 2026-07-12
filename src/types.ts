@@ -1,5 +1,5 @@
 export type Role = 'customer' | 'admin';
-export interface User { id:string; name:string; email:string; passwordHash:string; role:Role; active:boolean; createdAt:string }
+export interface User { id:string; name:string; email:string; role:Role; active:boolean; createdAt:string }
 export interface Category { id:string; name:string; slug:string; description?:string; active:boolean; createdAt:string }
 export interface Product { id:string; name:string; description:string; category:string; categoryId?:string; price:number; stock:number; image:string; featured:boolean; sku:string; active:boolean; createdAt:string; updatedAt:string }
 export interface CartItem { productId:string; quantity:number }
