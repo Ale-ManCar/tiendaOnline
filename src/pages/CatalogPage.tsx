@@ -8,7 +8,7 @@ import { useStore } from '../context/StoreContext';
 type OutletContext = { notify: (toast: ToastState) => void };
 
 export function CatalogPage() {
-  const { products, addToCart } = useStore();
+  const { products, addToCart, catalogLoading, catalogError } = useStore();
   const { notify } = useOutletContext<OutletContext>();
   const [params, setParams] = useSearchParams();
   const [search, setSearch] = useState(params.get('q') ?? '');
@@ -33,6 +33,9 @@ export function CatalogPage() {
 
   const clearFilters = () => { setSearch(''); setCategory('Todas'); setSort('featured'); setMaxPrice(150); setParams({}); };
   const handleAdd = (id: string) => { const result = addToCart(id); notify({ message: result.message, type: result.ok ? 'success' : 'error' }); };
+
+  if (catalogLoading) return <section className="section"><div className="container empty-state boxed" role="status"><h2>Loading products…</h2></div></section>;
+  if (catalogError) return <section className="section"><div className="container empty-state boxed" role="alert"><h2>We could not load the catalog</h2><p>{catalogError}</p><button className="button primary" onClick={()=>location.reload()}>Try again</button></div></section>;
 
   return (
     <section className="section catalog-page">

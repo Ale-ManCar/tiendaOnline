@@ -9,10 +9,12 @@ type OutletContext = { notify: (toast: ToastState) => void };
 
 export function ProductDetailPage() {
   const { id } = useParams();
-  const { products, addToCart } = useStore();
+  const { products, addToCart, catalogLoading, catalogError } = useStore();
   const { notify } = useOutletContext<OutletContext>();
   const [quantity, setQuantity] = useState(1);
   const product = products.find((candidate) => candidate.id === id);
+  if (catalogLoading) return <div className="container not-found" role="status"><h1>Loading product…</h1></div>;
+  if (catalogError) return <div className="container not-found" role="alert"><h1>Could not load product</h1><p>{catalogError}</p><Link className="button primary" to="/catalogo">Back to catalog</Link></div>;
   if (!product) return <div className="container not-found"><h1>Producto no encontrado</h1><Link className="button primary" to="/catalogo">Volver al catálogo</Link></div>;
   const related = products.filter((candidate) => candidate.category === product.category && candidate.id !== product.id).slice(0, 4);
   const add = (productId: string, qty = 1) => { const result = addToCart(productId, qty); notify({ message: result.message, type: result.ok ? 'success' : 'error' }); };
