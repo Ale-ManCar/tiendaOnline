@@ -1,3 +1,5 @@
-# Limitaciones
+# Limitations
 
-No existe servidor, pago real, recuperación de contraseña ni garantía contra manipulación local. Las operaciones no son transacciones de base de datos. Para producción se requiere API, persistencia relacional, autenticación segura y autorización en cada endpoint.
+The project now has a NestJS API, PostgreSQL persistence, secure cookie authentication, and server-backed public catalog reads. It is still not ready for real sales because payments, password recovery, server-side carts, inventory reservations, transactional checkout, production observability, and hosted backend infrastructure are not complete.
+
+GitHub Pages can host only the static storefront. The API and PostgreSQL database need separate production hosting before the site can operate as a real ecommerce business.

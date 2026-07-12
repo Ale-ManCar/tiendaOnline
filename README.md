@@ -1,20 +1,21 @@
 # Nova Store
 
-Nova Store is evolving into a production-oriented ecommerce platform. The existing React, TypeScript, Vite, and React Router storefront is now accompanied by a NestJS, PostgreSQL, and Prisma backend foundation. LocalStorage remains only as a temporary compatibility layer while each frontend module moves to server-controlled data.
+Nova Store is a production-oriented ecommerce platform built with React, TypeScript, Vite, React Router, NestJS, PostgreSQL, and Prisma. The storefront is still deployable as a static GitHub Pages app, while the backend owns authentication and the public catalog API.
 
-## Desarrollo
+## Development
 
 Requires Node.js 22. For the storefront, run `npm ci`, `npm run dev`, `npm test`, and `npm run build`. For the API, follow [server/README.md](server/README.md).
-Set `VITE_API_URL` to the public API base URL, including `/api/v1`. Authentication is restored from HTTP-only server cookies; browser code no longer stores or verifies passwords.
 
-La aplicación usa `HashRouter` porque GitHub Pages no reescribe rutas hacia `index.html`. Vite conserva `base: '/tiendaOnline/'`; una pantalla en blanco suele indicar que el nombre del repositorio y ese base no coinciden. El workflow publica únicamente `dist` después de pruebas y build.
+Set `VITE_API_URL` to the public API base URL, including `/api/v1`. Authentication uses HTTP-only server cookies; browser code does not store or verify passwords.
 
-## Persistencia
+The app uses `HashRouter` because GitHub Pages does not rewrite routes to `index.html`. Vite keeps `base: '/tiendaOnline/'`; a blank screen usually means the repository name and that base path do not match. The workflow publishes only `dist` after tests and build.
 
-Los datos se guardan en envoltorios `{ version, data }`, se leen defensivamente y se migran desde las estructuras antiguas. Cada cuenta dispone de un carrito independiente; el carrito invitado se combina al iniciar sesión sin superar existencias.
+## Persistence
 
-## Current migration security limitations
+The public catalog is served from PostgreSQL through the backend API. Local browser storage remains only for client-side cart/order compatibility until those flows are moved fully server-side.
 
-The current storefront authentication is still simulated until it is connected to the new API. LocalStorage can be manipulated through browser tools and must not control prices, stock, permissions, or orders in production. The backend foundation introduces the boundary for PostgreSQL persistence, Argon2 credentials, secure sessions, server authorization, audit logs, and payment adapters; those modules will be implemented incrementally before real sales are enabled.
+## Current Limitations
 
-Consulta [arquitectura](docs/architecture.md), [modelo de datos](docs/data-model.md), [pruebas](docs/testing.md), [despliegue](docs/deployment.md) y [limitaciones](docs/limitations.md).
+Real payments, password recovery, server-side carts, inventory reservations, and production order transactions are not complete yet. Before real sales, the backend still needs payment adapters, webhook idempotency, operational audit logs, and production hosting outside GitHub Pages.
+
+See [architecture](docs/architecture.md), [data model](docs/data-model.md), [testing](docs/testing.md), [deployment](docs/deployment.md), and [limitations](docs/limitations.md).
