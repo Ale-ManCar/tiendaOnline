@@ -8,7 +8,7 @@ Nova Store should run without Docker in demos, staging, and production.
 - Backend API: Render.
 - Database: Neon PostgreSQL.
 
-This keeps the deployed site usable from phones and other PCs without Docker, `npm run dev`, or `npm run start:dev`.
+This keeps the deployed site usable from phones and other PCs without Docker, `npm run dev`, or `npm run start:dev`. If no backend host is available, GitHub Pages can still run in browser-only demo mode.
 
 ## Required Environment Variables
 
@@ -22,9 +22,9 @@ Backend:
 
 Frontend:
 
-- `VITE_API_URL`: public backend API URL including `/api/v1`.
+- `VITE_API_URL`: public backend API URL including `/api/v1`. Leave unset only for browser-only demo mode.
 
-In GitHub Actions, set `VITE_API_URL` as a repository variable, not as source code. Example value: `https://your-api-host.example.com/api/v1`.
+In GitHub Actions, set `VITE_API_URL` as a repository variable when a hosted API exists. Example value: `https://your-api-host.example.com/api/v1`.
 
 ## Release Flow
 
