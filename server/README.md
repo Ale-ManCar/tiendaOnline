@@ -1,14 +1,20 @@
 # Nova Store API
 
-Production-oriented modular backend for Nova Store. It uses NestJS, PostgreSQL, Prisma, strict TypeScript, centralized request validation, security headers, credentialed CORS, cookies, and global rate limiting.
+Production-oriented modular backend for Nova Store. It uses NestJS, PostgreSQL, Prisma, strict TypeScript, centralized request validation, security headers, credentialed CORS, HTTP-only cookies, and global rate limiting.
 
-## Local setup
+## Database
 
-1. Copy `.env.example` to `.env` and replace the session secret.
-2. Start PostgreSQL from the repository root with `docker compose up -d postgres`.
-3. Run `npm ci` in this directory.
-4. Run `npx prisma migrate dev --name init`.
-5. Set `ADMIN_EMAIL` and `ADMIN_PASSWORD`, then run `npm run seed`.
+This project does not depend on Docker. Configure `DATABASE_URL` with a real PostgreSQL connection string from a hosted provider such as Neon, Supabase, Railway, Render, or another managed PostgreSQL service.
+
+For local development, you may also use a PostgreSQL server installed directly on your machine, but Docker is not required or assumed.
+
+## Local Setup
+
+1. Copy `.env.example` to `.env`.
+2. Set `DATABASE_URL`, `SESSION_SECRET`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD`.
+3. Run `npm ci`.
+4. Run `npx prisma migrate deploy` against the configured database.
+5. Run `npm run seed` to create the administrator and starter catalog.
 6. Start the API with `npm run start:dev`.
 
 The health endpoint is `GET http://localhost:3000/api/v1/health`.

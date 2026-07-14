@@ -6,13 +6,13 @@ Nova Store is a production-oriented ecommerce platform built with React, TypeScr
 
 Requires Node.js 22. For the storefront, run `npm ci`, `npm run dev`, `npm test`, and `npm run build`. For the API, follow [server/README.md](server/README.md).
 
-Set `VITE_API_URL` to the public API base URL, including `/api/v1`. Authentication uses HTTP-only server cookies; browser code does not store or verify passwords.
+Set `VITE_API_URL` to the public API base URL, including `/api/v1`. Authentication uses HTTP-only server cookies; browser code does not store or verify passwords. For GitHub Pages demos, configure `VITE_API_URL` as a GitHub Actions repository variable pointing to the hosted backend.
 
 The app uses `HashRouter` because GitHub Pages does not rewrite routes to `index.html`. Vite keeps `base: '/tiendaOnline/'`; a blank screen usually means the repository name and that base path do not match. The workflow publishes only `dist` after tests and build.
 
 ## Persistence
 
-The public catalog is served from PostgreSQL through the backend API. Local browser storage remains only for client-side cart/order compatibility until those flows are moved fully server-side.
+The public catalog is served from PostgreSQL through the backend API. The database should be hosted through a PostgreSQL provider such as Neon, Supabase, Railway, or Render; Docker is not part of the required runtime.
 
 ## Current Limitations
 

@@ -17,6 +17,9 @@ concurrency:
 
 jobs:
   deploy:
+    env:
+      DATABASE_URL: postgresql://placeholder:placeholder@example.invalid:5432/nova_store?schema=public
+      VITE_API_URL: ${{ vars.VITE_API_URL }}
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
