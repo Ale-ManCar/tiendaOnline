@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Menu, Search, ShoppingBag, UserRound, X } from 'lucide-react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useStore } from '../context/StoreContext';
@@ -11,8 +11,10 @@ export function Layout() {
   const [authOpen, setAuthOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [toast, setToast] = useState<ToastState>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -21,10 +23,31 @@ export function Layout() {
     return () => window.clearTimeout(timeout);
   }, [toast]);
 
+  useEffect(() => {
+    const closeUserMenu = (event: PointerEvent) => {
+      if (!userMenuRef.current?.contains(event.target as Node)) setUserMenuOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setUserMenuOpen(false);
+    };
+    window.addEventListener('pointerdown', closeUserMenu);
+    window.addEventListener('keydown', closeOnEscape);
+    return () => {
+      window.removeEventListener('pointerdown', closeUserMenu);
+      window.removeEventListener('keydown', closeOnEscape);
+    };
+  }, []);
+
   const submitSearch = (event: React.FormEvent) => {
     event.preventDefault();
     navigate(`/catalogo?q=${encodeURIComponent(search)}`);
     setMenuOpen(false);
+    setUserMenuOpen(false);
+  };
+
+  const closeNavigation = () => {
+    setMenuOpen(false);
+    setUserMenuOpen(false);
   };
 
   return (
@@ -32,21 +55,57 @@ export function Layout() {
       <div className="announcement">Envío gratis en compras superiores a $100 · Compra segura</div>
       <header className="site-header">
         <div className="container header-inner">
-          <Link to="/" className="brand"><span>N</span> NOVA</Link>
-          <nav className={menuOpen ? 'main-nav open' : 'main-nav'}>
-            <NavLink to="/" onClick={() => setMenuOpen(false)}>Inicio</NavLink>
-            <NavLink to="/catalogo" onClick={() => setMenuOpen(false)}>Catálogo</NavLink>
-            {currentUser && <NavLink to="/pedidos" onClick={() => setMenuOpen(false)}>Mis pedidos</NavLink>}
-            {currentUser?.role === 'admin' && <NavLink to="/admin" onClick={() => setMenuOpen(false)}>Administración</NavLink>}
-            <form className="mobile-search" onSubmit={submitSearch}><Search size={18} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar productos" /></form>
+          <Link to="/" className="brand" onClick={closeNavigation}><span>N</span> NOVA</Link>
+          <nav className={menuOpen ? 'main-nav open' : 'main-nav'} aria-label="Navegación principal">
+            <NavLink to="/" onClick={closeNavigation}>Inicio</NavLink>
+            <NavLink to="/catalogo" onClick={closeNavigation}>Catálogo</NavLink>
+            {currentUser && <NavLink to="/pedidos" onClick={closeNavigation}>Mis pedidos</NavLink>}
+            {currentUser?.role === 'admin' && <NavLink to="/admin" onClick={closeNavigation}>Administración</NavLink>}
+            <form className="mobile-search" onSubmit={submitSearch}>
+              <Search size={18} />
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar productos" />
+            </form>
           </nav>
           <div className="header-actions">
-            <form className="header-search" onSubmit={submitSearch}><Search size={18} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar" /></form>
+            <form className="header-search" onSubmit={submitSearch}>
+              <Search size={18} />
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar" />
+            </form>
             {currentUser ? (
-              <div className="user-menu"><button className="header-icon user-trigger"><UserRound size={20} /><span>{currentUser.name.split(' ')[0]}</span></button><div className="user-popover"><strong>{currentUser.name}</strong><small>{currentUser.email}</small>{currentUser.role === 'admin' && <Link to="/admin">Panel administrativo</Link>}<button onClick={() => { logout(); setToast({ message: 'Sesión cerrada.', type: 'success' }); }}>Cerrar sesión</button></div></div>
-            ) : <button className="header-icon" onClick={() => setAuthOpen(true)}><UserRound size={20} /><span>Ingresar</span></button>}
+              <div className="user-menu" ref={userMenuRef}>
+                <button
+                  className="header-icon user-trigger"
+                  aria-haspopup="menu"
+                  aria-expanded={userMenuOpen}
+                  onClick={() => {
+                    setUserMenuOpen((open) => !open);
+                    setMenuOpen(false);
+                  }}
+                >
+                  <UserRound size={20} />
+                  <span>{currentUser.name.split(' ')[0]}</span>
+                </button>
+                <div className={userMenuOpen ? 'user-popover open' : 'user-popover'} role="menu">
+                  <strong>{currentUser.name}</strong>
+                  <small>{currentUser.email}</small>
+                  {currentUser.role === 'admin' && <Link to="/admin" role="menuitem" onClick={closeNavigation}>Panel administrativo</Link>}
+                  <button
+                    role="menuitem"
+                    onClick={() => {
+                      logout();
+                      closeNavigation();
+                      setToast({ message: 'Sesión cerrada.', type: 'success' });
+                    }}
+                  >
+                    Cerrar sesión
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button className="header-icon" onClick={() => setAuthOpen(true)}><UserRound size={20} /><span>Ingresar</span></button>
+            )}
             <button className="header-icon cart-button" onClick={() => setCartOpen(true)}><ShoppingBag size={21} /><span>Carrito</span>{cartCount > 0 && <b>{cartCount}</b>}</button>
-            <button className="mobile-menu" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X /> : <Menu />}</button>
+            <button className="mobile-menu" aria-label="Abrir menú" aria-expanded={menuOpen} onClick={() => { setMenuOpen(!menuOpen); setUserMenuOpen(false); }}>{menuOpen ? <X /> : <Menu />}</button>
           </div>
         </div>
       </header>
@@ -58,7 +117,7 @@ export function Layout() {
           <div><h4>Ayuda</h4><a href="mailto:soporte@novastore.com">soporte@novastore.com</a><span>Guayaquil, Ecuador</span><span>Lun–Vie, 09:00–18:00</span></div>
           <div><h4>Pagos seguros</h4><p>Tarjeta, transferencia y pago contra entrega.</p></div>
         </div>
-        <div className="container footer-bottom"><span>© 2026 Nova Store</span><span>Proyecto académico · Universidad de Guayaquil</span></div>
+        <div className="container footer-bottom"><span>© 2026 Nova Store</span><span>Demo comercial · Nova Store</span></div>
       </footer>
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} notify={setToast} />
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
