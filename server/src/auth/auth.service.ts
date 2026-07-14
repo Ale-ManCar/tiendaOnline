@@ -1,6 +1,7 @@
 import {
   ConflictException,
   Injectable,
+  ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -31,33 +32,43 @@ export class AuthService {
   }
 
   async register(dto: RegisterDto, metadata: RequestMetadata) {
-    if (await this.prisma.user.findUnique({ where: { email: dto.email } }))
-      throw new ConflictException('An account with this email already exists.');
-    const passwordHash = await argon2.hash(dto.password, {
-      type: argon2.argon2id,
-    });
-    const user = await this.prisma.user.create({
-      data: {
-        name: dto.name,
-        email: dto.email,
-        passwordHash,
-        status: AccountStatus.ACTIVE,
-      },
-    });
-    await this.audit(user.id, 'auth.registered', metadata);
-    return this.issueSession(user, metadata);
+    try {
+      if (await this.prisma.user.findUnique({ where: { email: dto.email } }))
+        throw new ConflictException('An account with this email already exists.');
+      const passwordHash = await argon2.hash(dto.password, {
+        type: argon2.argon2id,
+      });
+      const user = await this.prisma.user.create({
+        data: {
+          name: dto.name,
+          email: dto.email,
+          passwordHash,
+          status: AccountStatus.ACTIVE,
+        },
+      });
+      await this.audit(user.id, 'auth.registered', metadata);
+      return this.issueSession(user, metadata);
+    } catch (error) {
+      this.handleDatabaseAvailability(error);
+      throw error;
+    }
   }
 
   async login(dto: LoginDto, metadata: RequestMetadata) {
-    const user = await this.prisma.user.findUnique({
-      where: { email: dto.email },
-    });
-    if (!user || !(await argon2.verify(user.passwordHash, dto.password)))
-      throw new UnauthorizedException('Invalid email or password.');
-    if (user.status !== AccountStatus.ACTIVE)
-      throw new UnauthorizedException('This account is not active.');
-    await this.audit(user.id, 'auth.logged_in', metadata);
-    return this.issueSession(user, metadata);
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { email: dto.email },
+      });
+      if (!user || !(await argon2.verify(user.passwordHash, dto.password)))
+        throw new UnauthorizedException('Invalid email or password.');
+      if (user.status !== AccountStatus.ACTIVE)
+        throw new UnauthorizedException('This account is not active.');
+      await this.audit(user.id, 'auth.logged_in', metadata);
+      return this.issueSession(user, metadata);
+    } catch (error) {
+      this.handleDatabaseAvailability(error);
+      throw error;
+    }
   }
 
   async refresh(token: string | undefined, metadata: RequestMetadata) {
@@ -183,5 +194,17 @@ export class AuthService {
         ipAddress: metadata.ipAddress,
       },
     });
+  }
+  private handleDatabaseAvailability(error: unknown) {
+    if (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      (error as { code?: unknown }).code === 'P1000'
+    ) {
+      throw new ServiceUnavailableException(
+        'Database credentials are invalid. Check DATABASE_URL.',
+      );
+    }
   }
 }
