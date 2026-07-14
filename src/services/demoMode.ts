@@ -5,6 +5,22 @@ type DemoUser = User & { passwordHash: string };
 
 const DEMO_USERS_KEY = 'nova_demo_users';
 const now = () => new Date().toISOString();
+const builtInUsers = [
+  {
+    id: 'demo-admin',
+    name: 'Demo Administrator',
+    email: 'admin@tienda.com',
+    role: 'admin' as const,
+    password: 'Administrador123*',
+  },
+  {
+    id: 'demo-customer',
+    name: 'Cliente Demo',
+    email: 'cliente@tienda.com',
+    role: 'customer' as const,
+    password: 'Cliente123*',
+  },
+];
 
 const demoCategories: Category[] = [
   { id: 'demo-cat-technology', name: 'Technology', slug: 'technology', active: true, createdAt: now() },
@@ -102,7 +118,7 @@ export function registerDemoUser(name: string, email: string, password: string) 
     role,
     active: true,
     createdAt: now(),
-    passwordHash: hashPassword(password),
+    passwordHash: hashPassword(normalizeDemoPassword(password)),
   };
   writeDemoUsers([user, ...users]);
   writeStorage(KEYS.session, publicUser(user));
@@ -112,7 +128,7 @@ export function registerDemoUser(name: string, email: string, password: string) 
 export function loginDemoUser(email: string, password: string) {
   const normalizedEmail = email.trim().toLowerCase();
   const user = readDemoUsers().find((candidate) => candidate.email === normalizedEmail);
-  if (!user || user.passwordHash !== hashPassword(password)) {
+  if (!user || user.passwordHash !== hashPassword(normalizeDemoPassword(password))) {
     throw new Error('Invalid email or password.');
   }
   if (!user.active) throw new Error('This account is not active.');
@@ -130,20 +146,18 @@ export function logoutDemoUser() {
 
 function readDemoUsers(): DemoUser[] {
   const users = readStorage<DemoUser[]>(DEMO_USERS_KEY, []);
-  if (users.some((user) => user.email === 'admin@tienda.com')) return users;
-  const admin: DemoUser = {
-    id: 'demo-admin',
-    name: 'Demo Administrator',
-    email: 'admin@tienda.com',
-    role: 'admin',
-    active: true,
-    createdAt: now(),
-    passwordHash: hashPassword('Administrador123*'),
-  };
-  return [
-    admin,
-    ...users,
-  ];
+  const missingUsers = builtInUsers
+    .filter((builtInUser) => !users.some((user) => user.email === builtInUser.email))
+    .map<DemoUser>((builtInUser) => ({
+      id: builtInUser.id,
+      name: builtInUser.name,
+      email: builtInUser.email,
+      role: builtInUser.role,
+      active: true,
+      createdAt: now(),
+      passwordHash: hashPassword(normalizeDemoPassword(builtInUser.password)),
+    }));
+  return [...missingUsers, ...users];
 }
 
 function writeDemoUsers(users: DemoUser[]) {
@@ -153,4 +167,8 @@ function writeDemoUsers(users: DemoUser[]) {
 function publicUser(user: DemoUser): User {
   const { passwordHash: _passwordHash, ...safeUser } = user;
   return safeUser;
+}
+
+function normalizeDemoPassword(password: string) {
+  return password.trim();
 }

@@ -1,11 +1,12 @@
 import {afterEach,describe,expect,it,vi} from 'vitest';
 import {loginAccount,restoreSession} from './authService';
+import {loginDemoUser, registerDemoUser} from './demoMode';
 
 const apiUser={id:'u1',name:'Jane Doe',email:'jane@example.com',role:'CUSTOMER'};
 const response=(body:unknown,status=200)=>new Response(status===204?null:JSON.stringify(body),{status,headers:{'Content-Type':'application/json'}});
 
 describe('authentication API client',()=>{
-  afterEach(()=>vi.unstubAllGlobals());
+  afterEach(()=>{vi.unstubAllGlobals(); localStorage.clear();});
 
   it('sends login credentials with browser cookies enabled',async()=>{
     const fetchMock=vi.fn().mockResolvedValue(response({user:apiUser}));vi.stubGlobal('fetch',fetchMock);
@@ -22,5 +23,11 @@ describe('authentication API client',()=>{
   it('returns no user when both access and refresh sessions are invalid',async()=>{
     vi.stubGlobal('fetch',vi.fn().mockResolvedValue(response({message:'unauthorized'},401)));
     await expect(restoreSession()).resolves.toBeNull();
+  });
+
+  it('supports built-in demo users and trims accidental mobile password spaces',()=>{
+    expect(loginDemoUser('cliente@tienda.com','Cliente123*')).toMatchObject({email:'cliente@tienda.com',role:'customer'});
+    registerDemoUser('Mobile User','mobile@example.com',' StrongPass1! ');
+    expect(loginDemoUser('mobile@example.com','StrongPass1!')).toMatchObject({email:'mobile@example.com'});
   });
 });
