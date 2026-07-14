@@ -1,6 +1,6 @@
 # Nova Store
 
-Nova Store is a production-oriented ecommerce platform built with React, TypeScript, Vite, React Router, NestJS, PostgreSQL, and Prisma. The storefront is still deployable as a static GitHub Pages app, while the backend owns authentication and the public catalog API.
+Nova Store is a production-oriented ecommerce platform built with React, TypeScript, Vite, React Router, NestJS, PostgreSQL, and Prisma. The storefront deploys to GitHub Pages, while the backend API runs on Render and PostgreSQL is hosted on Neon.
 
 ## Development
 
@@ -12,7 +12,7 @@ The app uses `HashRouter` because GitHub Pages does not rewrite routes to `index
 
 ## Persistence
 
-The public catalog is served from PostgreSQL through the backend API. The database should be hosted through a PostgreSQL provider such as Neon, Supabase, Railway, or Render; Docker is not part of the required runtime.
+The public catalog is served from PostgreSQL through the backend API. The database should be hosted on Neon; Docker is not part of the required runtime.
 
 ## Current Limitations
 

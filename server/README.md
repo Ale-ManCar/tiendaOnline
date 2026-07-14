@@ -4,9 +4,9 @@ Production-oriented modular backend for Nova Store. It uses NestJS, PostgreSQL, 
 
 ## Database
 
-This project does not depend on Docker. Configure `DATABASE_URL` with a real PostgreSQL connection string from a hosted provider such as Neon, Supabase, Railway, Render, or another managed PostgreSQL service.
+This project does not depend on Docker. Configure `DATABASE_URL` with a real PostgreSQL connection string from Neon. Use the pooled connection string and keep SSL enabled.
 
-For local development, you may also use a PostgreSQL server installed directly on your machine, but Docker is not required or assumed.
+For local development, you may also use the same Neon database or another PostgreSQL server installed directly on your machine, but Docker is not required or assumed.
 
 ## Local Setup
 
@@ -31,5 +31,6 @@ Authenticated checkout starts with `POST /api/v1/orders`. The client sends varia
 - `npx prisma generate`
 - `npm test -- --runInBand`
 - `npm run build`
+- `npm run deploy:build`
 
 Generated Prisma Client files and real environment files are intentionally ignored. Never commit database credentials, session secrets, or payment-provider keys.

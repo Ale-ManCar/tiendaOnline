@@ -2,11 +2,13 @@
 
 Nova Store should run without Docker in demos, staging, and production.
 
-## Recommended Hosting
+## Decision For Demo And Production
 
 - Frontend: GitHub Pages.
-- Backend API: Render, Railway, Fly.io, or another Node.js host.
-- Database: Neon, Supabase Postgres, Railway Postgres, Render Postgres, or another managed PostgreSQL provider.
+- Backend API: Render.
+- Database: Neon PostgreSQL.
+
+This keeps the deployed site usable from phones and other PCs without Docker, `npm run dev`, or `npm run start:dev`.
 
 ## Required Environment Variables
 
@@ -26,12 +28,20 @@ In GitHub Actions, set `VITE_API_URL` as a repository variable, not as source co
 
 ## Release Flow
 
-1. Provision the hosted PostgreSQL database.
-2. Configure backend environment variables in the hosting provider.
-3. Run Prisma migrations against the hosted database with `npx prisma migrate deploy`.
-4. Run `npm run seed` once to create the administrator and starter catalog.
-5. Deploy the NestJS backend.
-6. Set `VITE_API_URL` for the GitHub Pages build.
-7. Build and publish the frontend with GitHub Actions.
+1. Create a Neon PostgreSQL project.
+2. Copy the pooled PostgreSQL connection string. It must include SSL, usually `sslmode=require`.
+3. Create the Render web service from this repository. The included `render.yaml` configures the API build, start command, and health check.
+4. In Render, set `DATABASE_URL`, `SESSION_SECRET`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD`.
+5. Deploy the Render service. Its build command runs Prisma generate, migrations, and the NestJS build.
+6. Seed the database once with `npm run seed` using the same `DATABASE_URL`.
+7. Set the GitHub Actions repository variable `VITE_API_URL` to the Render API URL including `/api/v1`, for example `https://nova-store-api.onrender.com/api/v1`.
+8. Push to `main` or manually run the GitHub Pages workflow.
 
 GitHub Pages hosts only the static storefront. It does not run the API or database.
+
+## Smoke Tests
+
+- API liveness: `https://YOUR_RENDER_URL/api/v1/health`
+- API database readiness: `https://YOUR_RENDER_URL/api/v1/ready`
+- Storefront: open the GitHub Pages URL from a phone using mobile data.
+- Register a new account and verify the request no longer points to `localhost`.
