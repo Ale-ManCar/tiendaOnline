@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useStore } from '../context/StoreContext';
-import type { OrderStatus } from '../types';
+import type { OrderStatus, Product } from '../types';
+import { productSchema } from '../validation/schemas';
 
 const tabs = {
   products: 'Productos',
@@ -13,8 +14,16 @@ const tabs = {
 export function AdminPage() {
   const store = useStore();
   const [tab, setTab] = useState<keyof typeof tabs>('products');
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [creatingProduct, setCreatingProduct] = useState(false);
+  const [adminMessage, setAdminMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   if (store.currentUser?.role !== 'admin') return <Navigate to="/" replace />;
+
+  const closeProductForm = () => {
+    setEditingProduct(null);
+    setCreatingProduct(false);
+  };
 
   return (
     <section className="admin-page">
@@ -62,44 +71,64 @@ export function AdminPage() {
           ))}
         </div>
 
+        {adminMessage && <p className={`admin-message ${adminMessage.type}`}>{adminMessage.text}</p>}
+
         <div className="admin-card">
           <div className="table-wrap">
             {tab === 'products' && (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Producto</th>
-                    <th>SKU</th>
-                    <th>Categoría</th>
-                    <th>Precio</th>
-                    <th>Stock</th>
-                    <th>Estado</th>
-                    <th>Acción</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {store.products.map((product) => (
-                    <tr key={product.id}>
-                      <td>
-                        <div className="table-product">
-                          <img src={product.image} alt="" />
-                          <strong>{product.name}</strong>
-                        </div>
-                      </td>
-                      <td>{product.sku}</td>
-                      <td>{product.category}</td>
-                      <td>${product.price.toFixed(2)}</td>
-                      <td>{product.stock}</td>
-                      <td>{product.active ? 'Activo' : 'Inactivo'}</td>
-                      <td>
-                        <button className="text-button danger" onClick={() => confirm('¿Eliminar producto?') && store.deleteProduct(product.id)}>
-                          Eliminar
-                        </button>
-                      </td>
+              <>
+                <div className="admin-toolbar">
+                  <div>
+                    <h2>Catálogo</h2>
+                    <p>Agrega, edita, destaca o desactiva productos para la tienda.</p>
+                  </div>
+                  <button className="button primary" onClick={() => setCreatingProduct(true)}>
+                    Nuevo producto
+                  </button>
+                </div>
+
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Producto</th>
+                      <th>SKU</th>
+                      <th>Categoría</th>
+                      <th>Precio</th>
+                      <th>Stock</th>
+                      <th>Estado</th>
+                      <th>Acción</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {store.products.map((product) => (
+                      <tr key={product.id}>
+                        <td>
+                          <div className="table-product">
+                            <img src={product.image} alt="" />
+                            <span>
+                              <strong>{product.name}</strong>
+                              {product.featured && <small>Destacado</small>}
+                            </span>
+                          </div>
+                        </td>
+                        <td>{product.sku}</td>
+                        <td>{product.category}</td>
+                        <td>${product.price.toFixed(2)}</td>
+                        <td>{product.stock}</td>
+                        <td>{product.active ? 'Activo' : 'Inactivo'}</td>
+                        <td>
+                          <div className="table-actions inline">
+                            <button onClick={() => setEditingProduct(product)}>Editar</button>
+                            <button className="danger" onClick={() => confirm('¿Eliminar producto?') && store.deleteProduct(product.id)}>
+                              Eliminar
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </>
             )}
 
             {tab === 'categories' && (
@@ -222,6 +251,147 @@ export function AdminPage() {
           </div>
         </div>
       </div>
+
+      {(creatingProduct || editingProduct) && (
+        <ProductFormModal
+          product={editingProduct}
+          categories={store.categories}
+          onClose={closeProductForm}
+          onSubmit={(formProduct) => {
+            const category = store.categories.find((candidate) => candidate.name === formProduct.category);
+            const result = editingProduct
+              ? store.updateProduct({
+                  ...editingProduct,
+                  ...formProduct,
+                  categoryId: category?.id,
+                })
+              : store.addProduct({
+                  ...formProduct,
+                  categoryId: category?.id,
+                });
+
+            setAdminMessage({ type: result.ok ? 'success' : 'error', text: result.message });
+            if (result.ok) closeProductForm();
+          }}
+        />
+      )}
     </section>
+  );
+}
+
+type ProductFormData = Omit<Product, 'id' | 'createdAt' | 'updatedAt'>;
+
+function ProductFormModal({
+  product,
+  categories,
+  onClose,
+  onSubmit,
+}: {
+  product: Product | null;
+  categories: { id: string; name: string; active: boolean }[];
+  onClose: () => void;
+  onSubmit: (product: ProductFormData) => void;
+}) {
+  const [error, setError] = useState('');
+  const activeCategories = categories.filter((category) => category.active);
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError('');
+    if (!activeCategories.length) {
+      setError('Crea al menos una categoría activa antes de agregar productos.');
+      return;
+    }
+    const form = new FormData(event.currentTarget);
+    const parsed = productSchema.safeParse({
+      name: String(form.get('name') ?? ''),
+      description: String(form.get('description') ?? ''),
+      category: String(form.get('category') ?? ''),
+      sku: String(form.get('sku') ?? ''),
+      price: form.get('price'),
+      stock: form.get('stock'),
+      image: String(form.get('image') ?? ''),
+      featured: form.get('featured') === 'on',
+      active: form.get('active') === 'on',
+    });
+
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? 'Revisa los datos del producto.');
+      return;
+    }
+
+    onSubmit({
+      ...parsed.data,
+      defaultVariantId: product?.defaultVariantId,
+    });
+  };
+
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <form className="product-modal admin-product-form" onSubmit={submit}>
+        <button className="modal-close icon-button" type="button" onClick={onClose} aria-label="Cerrar">
+          ×
+        </button>
+        <div className="auth-head">
+          <span className="eyebrow">CATÁLOGO</span>
+          <h2>{product ? 'Editar producto' : 'Nuevo producto'}</h2>
+          <p>Completa la información visible para los clientes en la tienda.</p>
+        </div>
+
+        <div className="form-grid">
+          <label>
+            Nombre *
+            <input name="name" defaultValue={product?.name} required />
+          </label>
+          <label>
+            SKU *
+            <input name="sku" defaultValue={product?.sku} required />
+          </label>
+          <label>
+            Categoría *
+            <select name="category" defaultValue={product?.category ?? activeCategories[0]?.name ?? ''} required>
+              {activeCategories.map((category) => (
+                <option key={category.id} value={category.name}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Precio *
+            <input name="price" type="number" min="0.01" step="0.01" defaultValue={product?.price ?? 1} required />
+          </label>
+          <label>
+            Stock *
+            <input name="stock" type="number" min="0" step="1" defaultValue={product?.stock ?? 0} required />
+          </label>
+          <label className="full-span">
+            Imagen URL *
+            <input name="image" type="url" defaultValue={product?.image} placeholder="https://..." required />
+          </label>
+          <label className="full-span">
+            Descripción *
+            <textarea name="description" defaultValue={product?.description} required />
+          </label>
+          <label className="checkbox-label">
+            <input name="featured" type="checkbox" defaultChecked={product?.featured ?? false} /> Producto destacado
+          </label>
+          <label className="checkbox-label">
+            <input name="active" type="checkbox" defaultChecked={product?.active ?? true} /> Producto activo
+          </label>
+        </div>
+
+        {error && <p className="form-error prominent">{error}</p>}
+
+        <div className="modal-actions">
+          <button className="button secondary" type="button" onClick={onClose}>
+            Cancelar
+          </button>
+          <button className="button primary" type="submit">
+            {product ? 'Guardar cambios' : 'Crear producto'}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }
