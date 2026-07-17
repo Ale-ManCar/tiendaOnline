@@ -44,6 +44,14 @@ The storefront branding is controlled through environment variables:
 
 These values allow the same frontend code to be reused for different businesses.
 
+## Demo catalog seed
+
+The browser-only fallback catalog lives in:
+
+- `src/data/demoCatalogSeed.ts`
+
+For a client presentation or first setup, this file can be replaced with that client's initial categories and products. For a paid production deployment, the real catalog should live in that client's backend database instead of relying on demo seed data.
+
 ## Minimum production services per client
 
 For a real paid customer, do not rely on browser-only demo mode.
@@ -78,4 +86,3 @@ A single shared SaaS platform would require:
 - Stronger operational security.
 
 That can be a future version. For now, separate deployments are the better commercial path.
-
