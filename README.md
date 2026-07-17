@@ -6,13 +6,13 @@ Nova Store is a production-oriented ecommerce platform built with React, TypeScr
 
 Requires Node.js 22. For the storefront, run `npm ci`, `npm run dev`, `npm test`, and `npm run build`. For the API, follow [server/README.md](server/README.md).
 
-Set `VITE_API_URL` to the public API base URL, including `/api/v1`. Authentication uses HTTP-only server cookies when the backend is available. If no hosted API is available, the storefront falls back to browser-only demo mode so GitHub Pages can still be presented from phones and other PCs.
+Set `VITE_API_URL` to the public API base URL, including `/api/v1`. Authentication uses HTTP-only server cookies when the backend is available. `VITE_ENABLE_DEMO_FALLBACK=true` keeps the browser-only fallback available for previews. For paid customer deployments, set `VITE_ENABLE_DEMO_FALLBACK=false` so API/database failures are visible instead of silently creating local demo data.
 
 The app uses `HashRouter` because GitHub Pages does not rewrite routes to `index.html`. Vite keeps `base: '/tiendaOnline/'`; a blank screen usually means the repository name and that base path do not match. The workflow publishes only `dist` after tests and build.
 
 ## Persistence
 
-The production catalog is served from PostgreSQL through the backend API. Demo mode uses browser storage and seeded products; it is for presentations only, not real sales. Docker is not part of the required runtime.
+The production catalog is served from PostgreSQL through the backend API. Demo fallback uses browser storage and seeded products; it is for previews only, not real sales. Docker is not part of the required runtime.
 
 ## Current Limitations
 

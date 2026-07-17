@@ -5,6 +5,11 @@ const value = (key: string, fallback: string) => {
   return typeof candidate === 'string' && candidate.trim() ? candidate.trim() : fallback;
 };
 
+const booleanValue = (key: string, fallback: boolean) => {
+  const candidate = value(key, String(fallback)).toLowerCase();
+  return ['1', 'true', 'yes', 'on'].includes(candidate);
+};
+
 export const storeConfig = {
   name: value('VITE_STORE_NAME', 'Nova Store'),
   shortName: value('VITE_STORE_SHORT_NAME', 'NOVA'),
@@ -17,4 +22,5 @@ export const storeConfig = {
   footerNote: value('VITE_STORE_FOOTER_NOTE', 'Tienda online profesional'),
   defaultCheckoutCity: value('VITE_STORE_DEFAULT_CITY', 'Guayaquil'),
   demoAdminEmail: value('VITE_DEMO_ADMIN_EMAIL', 'admin@tienda.com').toLowerCase(),
+  enableDemoFallback: booleanValue('VITE_ENABLE_DEMO_FALLBACK', true),
 };

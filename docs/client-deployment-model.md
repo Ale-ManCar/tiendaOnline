@@ -41,8 +41,17 @@ The storefront branding is controlled through environment variables:
 - `VITE_STORE_FOOTER_NOTE`
 - `VITE_STORE_DEFAULT_CITY`
 - `VITE_API_URL`
+- `VITE_ENABLE_DEMO_FALLBACK`
 
 These values allow the same frontend code to be reused for different businesses.
+
+For paid clients, set:
+
+```env
+VITE_ENABLE_DEMO_FALLBACK=false
+```
+
+This prevents the storefront from silently falling back to browser-only local users, products, carts, or orders if the real API is unavailable.
 
 ## Demo catalog seed
 
@@ -54,7 +63,7 @@ For a client presentation or first setup, this file can be replaced with that cl
 
 ## Minimum production services per client
 
-For a real paid customer, do not rely on browser-only demo mode.
+For a real paid customer, do not rely on browser-only demo fallback.
 
 Each client should have:
 
