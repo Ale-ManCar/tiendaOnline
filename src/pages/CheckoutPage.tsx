@@ -10,6 +10,7 @@ import { Link, Navigate, useNavigate, useOutletContext } from 'react-router-dom'
 import type { ToastState } from '../components/Toast';
 import { useStore } from '../context/StoreContext';
 import type { PaymentMethod, ShippingData } from '../types';
+import { storeConfig } from '../config/storeConfig';
 
 type OutletContext = { notify: (toast: ToastState) => void; openAuth: () => void };
 
@@ -25,7 +26,7 @@ export function CheckoutPage() {
     email: currentUser?.email ?? '',
     phone: '',
     province: 'Guayas',
-    city: 'Guayaquil',
+    city: storeConfig.defaultCheckoutCity,
     address: '',
     notes: '',
   });

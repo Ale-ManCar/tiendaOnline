@@ -5,8 +5,9 @@ import {loginAccount,logoutAccount,registerAccount,restoreSession} from '../serv
 import {fetchStorefrontCatalog} from '../services/catalogService';
 import {createServerOrder} from '../services/orderService';
 import {isApiUnavailable} from '../services/demoMode';
+import {storeConfig} from '../config/storeConfig';
 const now=()=>new Date().toISOString();
-const admin:User={id:'user-admin',name:'Administrador heredado',email:'admin@tienda.com',role:'admin',active:true,createdAt:now()};
+const admin:User={id:'user-admin',name:'Administrador principal',email:storeConfig.demoAdminEmail,role:'admin',active:true,createdAt:now()};
 interface StoreValue{products:Product[];users:User[];categories:Category[];catalogLoading:boolean;catalogError:string|null;currentUser:User|null;authReady:boolean;cart:CartItem[];orders:Order[];cartCount:number;cartSubtotal:number;register:(n:string,e:string,p:string)=>Promise<Result>;login:(e:string,p:string)=>Promise<Result>;logout:()=>Promise<void>;addToCart:(id:string,q?:number)=>Result;updateCartQuantity:(id:string,q:number)=>Result;removeFromCart:(id:string)=>void;clearCart:()=>void;createOrder:(s:ShippingData,m:PaymentMethod,reference?:string)=>Promise<Order>;addProduct:(p:Omit<Product,'id'|'createdAt'|'updatedAt'>)=>Result;updateProduct:(p:Product)=>Result;deleteProduct:(id:string)=>Result;addCategory:(c:Omit<Category,'id'|'createdAt'|'slug'>)=>Result;updateCategory:(c:Category)=>Result;deleteCategory:(id:string)=>Result;updateOrderStatus:(id:string,s:OrderStatus)=>Result;toggleUser:(id:string)=>Result}
 const Context=createContext<StoreValue|undefined>(undefined);
 export function StoreProvider({children}:{children:ReactNode}){
