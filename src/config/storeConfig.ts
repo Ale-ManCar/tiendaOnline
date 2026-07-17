@@ -23,6 +23,22 @@ export const storeConfig = {
   businessHours: value('VITE_STORE_BUSINESS_HOURS', 'Lun-Vie, 09:00-18:00'),
   footerNote: value('VITE_STORE_FOOTER_NOTE', 'Tienda online profesional'),
   defaultCheckoutCity: value('VITE_STORE_DEFAULT_CITY', 'Guayaquil'),
+  enableCardPayments: booleanValue('VITE_ENABLE_CARD_PAYMENTS', false),
+  enableBankTransfer: booleanValue('VITE_ENABLE_BANK_TRANSFER', true),
+  enableCashOnDelivery: booleanValue('VITE_ENABLE_CASH_ON_DELIVERY', true),
+  bankTransferInstructions: value(
+    'VITE_BANK_TRANSFER_INSTRUCTIONS',
+    'Realiza la transferencia y escribe el número de comprobante para que el equipo pueda validar tu pedido.',
+  ),
+  bankAccountLabel: value('VITE_BANK_ACCOUNT_LABEL', 'Cuenta bancaria por definir'),
+  cashOnDeliveryInstructions: value(
+    'VITE_CASH_ON_DELIVERY_INSTRUCTIONS',
+    'Paga al recibir tu pedido. El equipo confirmará disponibilidad y zona de cobertura antes del envío.',
+  ),
+  cardPaymentInstructions: value(
+    'VITE_CARD_PAYMENT_INSTRUCTIONS',
+    'El pago con tarjeta requiere un proveedor de pagos conectado para operar en producción.',
+  ),
   demoAdminEmail: value('VITE_DEMO_ADMIN_EMAIL', 'admin@tienda.com').toLowerCase(),
   enableDemoFallback: booleanValue('VITE_ENABLE_DEMO_FALLBACK', true),
 };

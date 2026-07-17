@@ -42,6 +42,13 @@ The storefront branding is controlled through environment variables:
 - `VITE_STORE_BUSINESS_HOURS`
 - `VITE_STORE_FOOTER_NOTE`
 - `VITE_STORE_DEFAULT_CITY`
+- `VITE_ENABLE_CARD_PAYMENTS`
+- `VITE_ENABLE_BANK_TRANSFER`
+- `VITE_ENABLE_CASH_ON_DELIVERY`
+- `VITE_BANK_TRANSFER_INSTRUCTIONS`
+- `VITE_BANK_ACCOUNT_LABEL`
+- `VITE_CASH_ON_DELIVERY_INSTRUCTIONS`
+- `VITE_CARD_PAYMENT_INSTRUCTIONS`
 - `VITE_API_URL`
 - `VITE_ENABLE_DEMO_FALLBACK`
 
@@ -54,6 +61,8 @@ VITE_ENABLE_DEMO_FALLBACK=false
 ```
 
 This prevents the storefront from silently falling back to browser-only local users, products, carts, or orders if the real API is unavailable.
+
+Card payments should remain disabled until a real payment provider, webhook validation, idempotency, and paid/failed order status transitions are configured. Manual bank transfer and cash on delivery can be used as safer first production payment methods.
 
 ## Demo catalog seed
 

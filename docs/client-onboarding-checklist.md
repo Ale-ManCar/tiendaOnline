@@ -38,6 +38,13 @@ VITE_STORE_LOCATION=
 VITE_STORE_BUSINESS_HOURS=
 VITE_STORE_FOOTER_NOTE=
 VITE_STORE_DEFAULT_CITY=
+VITE_ENABLE_CARD_PAYMENTS=false
+VITE_ENABLE_BANK_TRANSFER=true
+VITE_ENABLE_CASH_ON_DELIVERY=true
+VITE_BANK_TRANSFER_INSTRUCTIONS=
+VITE_BANK_ACCOUNT_LABEL=
+VITE_CASH_ON_DELIVERY_INSTRUCTIONS=
+VITE_CARD_PAYMENT_INSTRUCTIONS=
 VITE_API_URL=
 VITE_ENABLE_DEMO_FALLBACK=false
 ```
@@ -90,6 +97,8 @@ Confirm how the client wants to receive payments:
 - Local payment provider.
 
 For real card payments, do not mark the store as production-ready until webhooks, payment confirmation, and order status updates are working.
+
+If the client starts with manual payments, configure bank-transfer instructions and require the customer to enter a transfer reference during checkout.
 
 ## 6. Shipping setup
 

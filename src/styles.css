@@ -138,8 +138,8 @@ h1, h2, h3, h4, .brand { font-family: 'Manrope', sans-serif; }
 .filter-toggle { border: 0; background: transparent; display: inline-flex; align-items: center; gap: 8px; padding: 0; font-size: 16px; font-weight: 800; color: var(--ink); }
 .text-button { border: 0; background: transparent; color: var(--accent); font-weight: 800; padding: 0; }
 .text-button.danger { color: var(--danger); }
-.filters-panel label, .form-stack label, .form-grid label, .demo-card-fields label { display: flex; flex-direction: column; gap: 8px; font-size: 13px; font-weight: 700; color: #45474d; }
-.filters-panel input:not([type=range]), .filters-panel select, .form-stack input, .form-stack textarea, .form-grid input, .form-grid textarea, .form-grid select, .demo-card-fields input, .admin-card select { width: 100%; min-height: 46px; border: 1px solid var(--line); background: #fbfbf9; border-radius: 11px; padding: 0 13px; outline: 0; }
+.filters-panel label, .form-stack label, .form-grid label, .demo-card-fields label, .payment-reference label { display: flex; flex-direction: column; gap: 8px; font-size: 13px; font-weight: 700; color: #45474d; }
+.filters-panel input:not([type=range]), .filters-panel select, .form-stack input, .form-stack textarea, .form-grid input, .form-grid textarea, .form-grid select, .demo-card-fields input, .payment-reference input, .admin-card select { width: 100%; min-height: 46px; border: 1px solid var(--line); background: #fbfbf9; border-radius: 11px; padding: 0 13px; outline: 0; }
 textarea { padding-top: 12px !important; min-height: 95px !important; resize: vertical; }
 .filters-panel input:focus, .filters-panel select:focus, .form-stack input:focus, .form-stack textarea:focus, .form-grid input:focus, .form-grid textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(255,93,59,.1); }
 .input-icon { display: flex; align-items: center; gap: 7px; border: 1px solid var(--line); border-radius: 11px; padding: 0 11px; background: #fbfbf9; }
@@ -225,6 +225,10 @@ textarea { padding-top: 12px !important; min-height: 95px !important; resize: ve
 .payment-option small { color: var(--muted); }
 .payment-check { margin-left: auto; color: var(--green) !important; }
 .demo-card-fields { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 12px; margin-top: 16px; padding: 15px; background: var(--soft); border-radius: 13px; }
+.payment-instructions { margin-top: 14px; padding: 15px; border-radius: 13px; background: var(--soft); border: 1px solid var(--line); }
+.payment-instructions strong { display: block; margin-bottom: 5px; font-family: 'Manrope'; }
+.payment-instructions p { color: var(--muted); line-height: 1.6; margin: 0; font-size: 13px; }
+.payment-reference { margin-top: 14px; }
 .order-summary { position: sticky; top: 112px; }
 .order-summary h3 { margin-bottom: 20px; }
 .summary-items { max-height: 330px; overflow-y: auto; }

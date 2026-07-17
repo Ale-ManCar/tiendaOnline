@@ -5,7 +5,7 @@ import {
   LockKeyhole,
   PackageCheck,
 } from 'lucide-react';
-import { useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, Navigate, useNavigate, useOutletContext } from 'react-router-dom';
 import type { ToastState } from '../components/Toast';
 import { useStore } from '../context/StoreContext';
@@ -18,7 +18,8 @@ export function CheckoutPage() {
   const { currentUser, cart, products, cartSubtotal, createOrder } = useStore();
   const { notify, openAuth } = useOutletContext<OutletContext>();
   const navigate = useNavigate();
-  const [payment, setPayment] = useState<PaymentMethod>('Tarjeta');
+  const [payment, setPayment] = useState<PaymentMethod>('Transferencia');
+  const [paymentReference, setPaymentReference] = useState('');
   const [error, setError] = useState('');
   const [placingOrder, setPlacingOrder] = useState(false);
   const [shipping, setShipping] = useState<ShippingData>({
@@ -32,6 +33,47 @@ export function CheckoutPage() {
   });
   const tax = useMemo(() => Number((cartSubtotal * 0.15).toFixed(2)), [cartSubtotal]);
   const total = cartSubtotal + tax;
+  const paymentOptions = useMemo(
+    () => {
+      const configured = [
+        storeConfig.enableBankTransfer && {
+          method: 'Transferencia' as PaymentMethod,
+          icon: <LockKeyhole />,
+          description: 'Validación manual con comprobante o referencia.',
+          instructions: storeConfig.bankTransferInstructions,
+        },
+        storeConfig.enableCashOnDelivery && {
+          method: 'Contra entrega' as PaymentMethod,
+          icon: <PackageCheck />,
+          description: 'Pago al recibir el pedido.',
+          instructions: storeConfig.cashOnDeliveryInstructions,
+        },
+        storeConfig.enableCardPayments && {
+          method: 'Tarjeta' as PaymentMethod,
+          icon: <CreditCard />,
+          description: 'Pago con proveedor conectado.',
+          instructions: storeConfig.cardPaymentInstructions,
+        },
+      ].filter(Boolean) as Array<{ method: PaymentMethod; icon: ReactNode; description: string; instructions: string }>;
+
+      return configured.length
+        ? configured
+        : [
+            {
+              method: 'Transferencia' as PaymentMethod,
+              icon: <LockKeyhole />,
+              description: 'Validación manual con comprobante o referencia.',
+              instructions: storeConfig.bankTransferInstructions,
+            },
+          ];
+    },
+    [],
+  );
+  const selectedPayment = paymentOptions.find((option) => option.method === payment) ?? paymentOptions[0];
+
+  useEffect(() => {
+    if (selectedPayment && selectedPayment.method !== payment) setPayment(selectedPayment.method);
+  }, [payment, selectedPayment]);
 
   if (cart.length === 0) return <Navigate to="/catalogo" replace />;
 
@@ -41,7 +83,7 @@ export function CheckoutPage() {
     if (placingOrder) return;
     if (!currentUser) {
       openAuth();
-      setError('You need to sign in before placing an order.');
+      setError('Debes iniciar sesión antes de realizar el pedido.');
       return;
     }
     if (
@@ -52,16 +94,20 @@ export function CheckoutPage() {
       !shipping.city ||
       !shipping.address
     ) {
-      setError('Complete all required delivery fields.');
+      setError('Completa todos los campos obligatorios de entrega.');
+      return;
+    }
+    if (payment === 'Transferencia' && paymentReference.trim().length < 3) {
+      setError('Ingresa la referencia o número de comprobante de la transferencia.');
       return;
     }
     setPlacingOrder(true);
     try {
-      const order = await createOrder(shipping, payment);
-      notify({ message: 'Order registered successfully.', type: 'success' });
+      const order = await createOrder(shipping, payment, paymentReference.trim());
+      notify({ message: 'Pedido registrado correctamente.', type: 'success' });
       navigate(`/confirmacion/${order.id}`);
     } catch (exception) {
-      setError(exception instanceof Error ? exception.message : 'The order could not be completed.');
+      setError(exception instanceof Error ? exception.message : 'No se pudo completar el pedido.');
     } finally {
       setPlacingOrder(false);
     }
@@ -71,11 +117,11 @@ export function CheckoutPage() {
     <section className="section checkout-page">
       <div className="container">
         <Link className="back-link" to="/catalogo">
-          <ChevronLeft size={17} /> Continue shopping
+          <ChevronLeft size={17} /> Seguir comprando
         </Link>
         <div className="page-intro compact">
           <span className="eyebrow">CHECKOUT</span>
-          <h1>Delivery information</h1>
+          <h1>Información de entrega</h1>
         </div>
         <form className="checkout-grid" onSubmit={submit}>
           <div className="checkout-form">
@@ -83,13 +129,13 @@ export function CheckoutPage() {
               <div className="form-card-title">
                 <span>1</span>
                 <div>
-                  <h3>Customer details</h3>
-                  <p>Information used to create the order.</p>
+                  <h3>Datos del cliente</h3>
+                  <p>Información necesaria para crear y coordinar el pedido.</p>
                 </div>
               </div>
               <div className="form-grid">
                 <label>
-                  Full name *
+                  Nombre completo *
                   <input
                     value={shipping.fullName}
                     onChange={(e) => setShipping({ ...shipping, fullName: e.target.value })}
@@ -104,7 +150,7 @@ export function CheckoutPage() {
                   />
                 </label>
                 <label>
-                  Phone *
+                  Teléfono *
                   <input
                     value={shipping.phone}
                     onChange={(e) => setShipping({ ...shipping, phone: e.target.value })}
@@ -112,33 +158,33 @@ export function CheckoutPage() {
                   />
                 </label>
                 <label>
-                  Province *
+                  Provincia *
                   <input
                     value={shipping.province}
                     onChange={(e) => setShipping({ ...shipping, province: e.target.value })}
                   />
                 </label>
                 <label>
-                  City *
+                  Ciudad *
                   <input
                     value={shipping.city}
                     onChange={(e) => setShipping({ ...shipping, city: e.target.value })}
                   />
                 </label>
                 <label className="full-span">
-                  Address *
+                  Dirección *
                   <input
                     value={shipping.address}
                     onChange={(e) => setShipping({ ...shipping, address: e.target.value })}
-                    placeholder="Street, number, delivery reference"
+                    placeholder="Calle, número y referencia de entrega"
                   />
                 </label>
                 <label className="full-span">
-                  Order notes
+                  Notas del pedido
                   <textarea
                     value={shipping.notes}
                     onChange={(e) => setShipping({ ...shipping, notes: e.target.value })}
-                    placeholder="Additional delivery information"
+                    placeholder="Información adicional para la entrega"
                   />
                 </label>
               </div>
@@ -147,12 +193,12 @@ export function CheckoutPage() {
               <div className="form-card-title">
                 <span>2</span>
                 <div>
-                  <h3>Payment method</h3>
-                  <p>The order is registered on the server before payment automation.</p>
+                  <h3>Método de pago</h3>
+                  <p>Elige cómo el cliente pagará este pedido.</p>
                 </div>
               </div>
               <div className="payment-options">
-                {(['Tarjeta', 'Transferencia', 'Contra entrega'] as PaymentMethod[]).map((method) => (
+                {paymentOptions.map(({ method, icon, description }) => (
                   <label className={payment === method ? 'payment-option selected' : 'payment-option'} key={method}>
                     <input
                       type="radio"
@@ -160,34 +206,30 @@ export function CheckoutPage() {
                       checked={payment === method}
                       onChange={() => setPayment(method)}
                     />
-                    {method === 'Tarjeta' ? <CreditCard /> : method === 'Transferencia' ? <LockKeyhole /> : <PackageCheck />}
+                    {icon}
                     <span>
                       <strong>{method}</strong>
-                      <small>
-                        {method === 'Tarjeta'
-                          ? 'Card payment placeholder'
-                          : method === 'Transferencia'
-                            ? 'Manual bank transfer review'
-                            : 'Pay when the order is delivered'}
-                      </small>
+                      <small>{description}</small>
                     </span>
                     {payment === method && <CheckCircle2 className="payment-check" />}
                   </label>
                 ))}
               </div>
-              {payment === 'Tarjeta' && (
-                <div className="demo-card-fields">
+              {selectedPayment && (
+                <div className="payment-instructions">
+                  <strong>{selectedPayment.method === 'Transferencia' ? storeConfig.bankAccountLabel : selectedPayment.method}</strong>
+                  <p>{selectedPayment.instructions}</p>
+                </div>
+              )}
+              {payment === 'Transferencia' && (
+                <div className="payment-reference">
                   <label>
-                    Card number
-                    <input placeholder="4242 4242 4242 4242" />
-                  </label>
-                  <label>
-                    Expiration
-                    <input placeholder="MM/YY" />
-                  </label>
-                  <label>
-                    CVV
-                    <input placeholder="123" />
+                    Referencia de transferencia *
+                    <input
+                      value={paymentReference}
+                      onChange={(event) => setPaymentReference(event.target.value)}
+                      placeholder="Número de comprobante, transacción o nota"
+                    />
                   </label>
                 </div>
               )}
@@ -195,7 +237,7 @@ export function CheckoutPage() {
             {error && <p className="form-error prominent">{error}</p>}
           </div>
           <aside className="order-summary">
-            <h3>Order summary</h3>
+            <h3>Resumen del pedido</h3>
             <div className="summary-items">
               {cart.map((item) => {
                 const product = products.find((candidate) => candidate.id === item.productId);
@@ -204,7 +246,7 @@ export function CheckoutPage() {
                     <img src={product.image} alt={product.name} />
                     <span>
                       <strong>{product.name}</strong>
-                      <small>Quantity: {item.quantity}</small>
+                      <small>Cantidad: {item.quantity}</small>
                     </span>
                     <b>${(product.price * item.quantity).toFixed(2)}</b>
                   </div>
@@ -217,7 +259,7 @@ export function CheckoutPage() {
                 <strong>${cartSubtotal.toFixed(2)}</strong>
               </div>
               <div>
-                <span>VAT (15%)</span>
+                <span>IVA (15%)</span>
                 <strong>${tax.toFixed(2)}</strong>
               </div>
               <div className="summary-total">
@@ -226,10 +268,10 @@ export function CheckoutPage() {
               </div>
             </div>
             <button className="button primary full" type="submit" disabled={placingOrder}>
-              {placingOrder ? 'Registering order...' : 'Place order'}
+              {placingOrder ? 'Registrando pedido...' : 'Realizar pedido'}
             </button>
             <p className="secure-note">
-              <LockKeyhole size={15} /> Prices and stock are verified on the server.
+              <LockKeyhole size={15} /> Precios y stock se validan antes de registrar el pedido.
             </p>
           </aside>
         </form>
