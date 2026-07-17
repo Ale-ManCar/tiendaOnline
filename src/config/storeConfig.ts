@@ -12,11 +12,13 @@ const booleanValue = (key: string, fallback: boolean) => {
 
 export const storeConfig = {
   name: value('VITE_STORE_NAME', 'Nova Store'),
+  legalName: value('VITE_STORE_LEGAL_NAME', value('VITE_STORE_NAME', 'Nova Store')),
   shortName: value('VITE_STORE_SHORT_NAME', 'NOVA'),
   logoLetter: value('VITE_STORE_LOGO_LETTER', 'N').slice(0, 2).toUpperCase(),
   announcement: value('VITE_STORE_ANNOUNCEMENT', 'Envío gratis en compras superiores a $100 · Compra segura'),
   tagline: value('VITE_STORE_TAGLINE', 'Productos útiles, diseño contemporáneo y una experiencia de compra simple.'),
   supportEmail: value('VITE_STORE_SUPPORT_EMAIL', 'soporte@novastore.com'),
+  supportPhone: value('VITE_STORE_SUPPORT_PHONE', '+593 99 000 0000'),
   location: value('VITE_STORE_LOCATION', 'Guayaquil, Ecuador'),
   businessHours: value('VITE_STORE_BUSINESS_HOURS', 'Lun-Vie, 09:00-18:00'),
   footerNote: value('VITE_STORE_FOOTER_NOTE', 'Tienda online profesional'),

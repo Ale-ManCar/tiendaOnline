@@ -27,11 +27,13 @@ Configure these frontend environment variables per client:
 
 ```env
 VITE_STORE_NAME=
+VITE_STORE_LEGAL_NAME=
 VITE_STORE_SHORT_NAME=
 VITE_STORE_LOGO_LETTER=
 VITE_STORE_ANNOUNCEMENT=
 VITE_STORE_TAGLINE=
 VITE_STORE_SUPPORT_EMAIL=
+VITE_STORE_SUPPORT_PHONE=
 VITE_STORE_LOCATION=
 VITE_STORE_BUSINESS_HOURS=
 VITE_STORE_FOOTER_NOTE=
@@ -153,4 +155,3 @@ At delivery, provide:
 - Maintenance terms.
 - What is included in monthly support.
 - What requires extra payment.
-

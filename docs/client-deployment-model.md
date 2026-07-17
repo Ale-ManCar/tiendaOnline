@@ -31,11 +31,13 @@ For each new client, create a new deployment using the same code, then configure
 The storefront branding is controlled through environment variables:
 
 - `VITE_STORE_NAME`
+- `VITE_STORE_LEGAL_NAME`
 - `VITE_STORE_SHORT_NAME`
 - `VITE_STORE_LOGO_LETTER`
 - `VITE_STORE_ANNOUNCEMENT`
 - `VITE_STORE_TAGLINE`
 - `VITE_STORE_SUPPORT_EMAIL`
+- `VITE_STORE_SUPPORT_PHONE`
 - `VITE_STORE_LOCATION`
 - `VITE_STORE_BUSINESS_HOURS`
 - `VITE_STORE_FOOTER_NOTE`

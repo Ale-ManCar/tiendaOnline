@@ -115,8 +115,8 @@ export function Layout() {
         <div className="container footer-grid">
           <div><Link to="/" className="brand light"><span>{storeConfig.logoLetter}</span> {storeConfig.shortName}</Link><p>{storeConfig.tagline}</p></div>
           <div><h4>Navegación</h4><Link to="/">Inicio</Link><Link to="/catalogo">Catálogo</Link><Link to="/pedidos">Mis pedidos</Link></div>
-          <div><h4>Ayuda</h4><a href={`mailto:${storeConfig.supportEmail}`}>{storeConfig.supportEmail}</a><span>{storeConfig.location}</span><span>{storeConfig.businessHours}</span></div>
-          <div><h4>Pagos seguros</h4><p>Tarjeta, transferencia y pago contra entrega.</p></div>
+          <div><h4>Ayuda</h4><Link to="/legal/contacto">Contacto</Link><a href={`mailto:${storeConfig.supportEmail}`}>{storeConfig.supportEmail}</a><span>{storeConfig.location}</span><span>{storeConfig.businessHours}</span></div>
+          <div><h4>Legal</h4><Link to="/legal/terminos">Términos y condiciones</Link><Link to="/legal/privacidad">Privacidad</Link><Link to="/legal/devoluciones">Devoluciones</Link><Link to="/legal/envios">Envíos</Link></div>
         </div>
         <div className="container footer-bottom"><span>© 2026 {storeConfig.name}</span><span>{storeConfig.footerNote}</span></div>
       </footer>
