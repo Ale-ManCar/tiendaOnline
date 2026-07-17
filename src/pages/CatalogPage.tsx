@@ -16,7 +16,8 @@ export function CatalogPage() {
   const [sort, setSort] = useState('featured');
   const [maxPrice, setMaxPrice] = useState(150);
   const [filtersOpen, setFiltersOpen] = useState(() => (typeof window === 'undefined' ? true : window.innerWidth > 560));
-  const categories = ['Todas', ...Array.from(new Set(products.map((product) => product.category)))];
+  const visibleProducts = useMemo(() => products.filter((product) => product.active), [products]);
+  const categories = ['Todas', ...Array.from(new Set(visibleProducts.map((product) => product.category)))];
   const hasActiveFilters = Boolean(search || category !== 'Todas' || sort !== 'featured' || maxPrice !== 150);
 
   useEffect(() => {
@@ -30,7 +31,7 @@ export function CatalogPage() {
 
   const filtered = useMemo(() => {
     const normalized = search.toLowerCase().trim();
-    return [...products]
+    return [...visibleProducts]
       .filter((product) => category === 'Todas' || product.category === category)
       .filter((product) => product.price <= maxPrice)
       .filter((product) => !normalized || `${product.name} ${product.category}`.toLowerCase().includes(normalized))
@@ -40,7 +41,7 @@ export function CatalogPage() {
         if (sort === 'name') return a.name.localeCompare(b.name);
         return Number(b.featured) - Number(a.featured);
       });
-  }, [products, search, category, sort, maxPrice]);
+  }, [visibleProducts, search, category, sort, maxPrice]);
 
   const clearFilters = () => {
     setSearch('');

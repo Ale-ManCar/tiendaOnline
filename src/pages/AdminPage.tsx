@@ -1,8 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useStore } from '../context/StoreContext';
-import type { OrderStatus, Product } from '../types';
-import { productSchema } from '../validation/schemas';
+import type { Category, OrderStatus, Product } from '../types';
+import { categorySchema, productSchema } from '../validation/schemas';
 
 const tabs = {
   products: 'Productos',
@@ -16,6 +16,8 @@ export function AdminPage() {
   const [tab, setTab] = useState<keyof typeof tabs>('products');
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [creatingProduct, setCreatingProduct] = useState(false);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [creatingCategory, setCreatingCategory] = useState(false);
   const [adminMessage, setAdminMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   if (store.currentUser?.role !== 'admin') return <Navigate to="/" replace />;
@@ -23,6 +25,11 @@ export function AdminPage() {
   const closeProductForm = () => {
     setEditingProduct(null);
     setCreatingProduct(false);
+  };
+
+  const closeCategoryForm = () => {
+    setEditingCategory(null);
+    setCreatingCategory(false);
   };
 
   return (
@@ -133,23 +140,15 @@ export function AdminPage() {
 
             {tab === 'categories' && (
               <>
-                <form
-                  className="admin-toolbar"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    const form = new FormData(event.currentTarget);
-                    store.addCategory({
-                      name: String(form.get('name')),
-                      description: String(form.get('description')),
-                      active: true,
-                    });
-                    event.currentTarget.reset();
-                  }}
-                >
-                  <input name="name" required placeholder="Nueva categoría" />
-                  <input name="description" placeholder="Descripción" />
-                  <button className="button primary">Crear</button>
-                </form>
+                <div className="admin-toolbar">
+                  <div>
+                    <h2>Categorías</h2>
+                    <p>Organiza el catálogo y oculta categorías sin borrar productos.</p>
+                  </div>
+                  <button className="button primary" onClick={() => setCreatingCategory(true)}>
+                    Nueva categoría
+                  </button>
+                </div>
                 <table>
                   <thead>
                     <tr>
@@ -163,14 +162,20 @@ export function AdminPage() {
                   <tbody>
                     {store.categories.map((category) => (
                       <tr key={category.id}>
-                        <td>{category.name}</td>
+                        <td>
+                          <strong>{category.name}</strong>
+                          {category.description && <small className="block">{category.description}</small>}
+                        </td>
                         <td>{category.slug}</td>
-                        <td>{store.products.filter((product) => product.category === category.name).length}</td>
+                        <td>{store.products.filter((product) => product.category === category.name || product.categoryId === category.id).length}</td>
                         <td>{category.active ? 'Activa' : 'Inactiva'}</td>
                         <td>
-                          <button className="text-button danger" onClick={() => confirm('¿Eliminar categoría?') && store.deleteCategory(category.id)}>
-                            Eliminar
-                          </button>
+                          <div className="table-actions inline">
+                            <button onClick={() => setEditingCategory(category)}>Editar</button>
+                            <button className="danger" onClick={() => confirm('¿Eliminar categoría?') && store.deleteCategory(category.id)}>
+                              Eliminar
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -275,11 +280,100 @@ export function AdminPage() {
           }}
         />
       )}
+
+      {(creatingCategory || editingCategory) && (
+        <CategoryFormModal
+          category={editingCategory}
+          onClose={closeCategoryForm}
+          onSubmit={(formCategory) => {
+            const result = editingCategory
+              ? store.updateCategory({
+                  ...editingCategory,
+                  ...formCategory,
+                })
+              : store.addCategory(formCategory);
+
+            setAdminMessage({ type: result.ok ? 'success' : 'error', text: result.message });
+            if (result.ok) closeCategoryForm();
+          }}
+        />
+      )}
     </section>
   );
 }
 
 type ProductFormData = Omit<Product, 'id' | 'createdAt' | 'updatedAt'>;
+type CategoryFormData = Omit<Category, 'id' | 'createdAt' | 'slug'>;
+
+function CategoryFormModal({
+  category,
+  onClose,
+  onSubmit,
+}: {
+  category: Category | null;
+  onClose: () => void;
+  onSubmit: (category: CategoryFormData) => void;
+}) {
+  const [error, setError] = useState('');
+
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError('');
+    const form = new FormData(event.currentTarget);
+    const parsed = categorySchema.safeParse({
+      name: String(form.get('name') ?? ''),
+      description: String(form.get('description') ?? ''),
+      active: form.get('active') === 'on',
+    });
+
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? 'Revisa los datos de la categoría.');
+      return;
+    }
+
+    onSubmit(parsed.data);
+  };
+
+  return (
+    <div className="modal-backdrop" role="presentation">
+      <form className="product-modal admin-product-form" onSubmit={submit}>
+        <button className="modal-close icon-button" type="button" onClick={onClose} aria-label="Cerrar">
+          ×
+        </button>
+        <div className="auth-head">
+          <span className="eyebrow">CATEGORÍAS</span>
+          <h2>{category ? 'Editar categoría' : 'Nueva categoría'}</h2>
+          <p>Controla cómo se organizan los productos dentro del catálogo.</p>
+        </div>
+
+        <div className="form-grid">
+          <label>
+            Nombre *
+            <input name="name" defaultValue={category?.name} required />
+          </label>
+          <label className="full-span">
+            Descripción
+            <textarea name="description" defaultValue={category?.description ?? ''} />
+          </label>
+          <label className="checkbox-label">
+            <input name="active" type="checkbox" defaultChecked={category?.active ?? true} /> Categoría activa
+          </label>
+        </div>
+
+        {error && <p className="form-error prominent">{error}</p>}
+
+        <div className="modal-actions">
+          <button className="button secondary" type="button" onClick={onClose}>
+            Cancelar
+          </button>
+          <button className="button primary" type="submit">
+            {category ? 'Guardar cambios' : 'Crear categoría'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
 
 function ProductFormModal({
   product,
@@ -293,7 +387,7 @@ function ProductFormModal({
   onSubmit: (product: ProductFormData) => void;
 }) {
   const [error, setError] = useState('');
-  const activeCategories = categories.filter((category) => category.active);
+  const activeCategories = categories.filter((category) => category.active || category.name === product?.category);
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

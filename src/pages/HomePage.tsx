@@ -9,7 +9,7 @@ type OutletContext = { notify: (toast: ToastState) => void };
 export function HomePage() {
   const { products, addToCart } = useStore();
   const { notify } = useOutletContext<OutletContext>();
-  const featured = products.filter((product) => product.featured).slice(0, 6);
+  const featured = products.filter((product) => product.active && product.featured).slice(0, 6);
   const categories = [
     { name: 'Tecnología', image: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?auto=format&fit=crop&w=900&q=80' },
     { name: 'Hogar', image: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=900&q=80' },
