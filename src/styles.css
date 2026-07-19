@@ -229,6 +229,10 @@ textarea { padding-top: 12px !important; min-height: 95px !important; resize: ve
 .payment-instructions strong { display: block; margin-bottom: 5px; font-family: 'Manrope'; }
 .payment-instructions p { color: var(--muted); line-height: 1.6; margin: 0; font-size: 13px; }
 .payment-reference { margin-top: 14px; }
+.shipping-rule-card { display: flex; gap: 14px; align-items: flex-start; padding: 16px; border: 1px solid var(--line); border-radius: 15px; background: #fbfbf9; }
+.shipping-rule-card svg { color: var(--accent); flex: 0 0 auto; margin-top: 2px; }
+.shipping-rule-card span { display: flex; flex-direction: column; gap: 5px; }
+.shipping-rule-card small { color: var(--muted); line-height: 1.5; }
 .order-summary { position: sticky; top: 112px; }
 .order-summary h3 { margin-bottom: 20px; }
 .summary-items { max-height: 330px; overflow-y: auto; }

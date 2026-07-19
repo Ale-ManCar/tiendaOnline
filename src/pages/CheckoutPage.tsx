@@ -1,14 +1,9 @@
-import {
-  CheckCircle2,
-  ChevronLeft,
-  CreditCard,
-  LockKeyhole,
-  PackageCheck,
-} from 'lucide-react';
+import { CheckCircle2, ChevronLeft, CreditCard, LockKeyhole, PackageCheck, Truck } from 'lucide-react';
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, Navigate, useNavigate, useOutletContext } from 'react-router-dom';
 import type { ToastState } from '../components/Toast';
 import { useStore } from '../context/StoreContext';
+import { calculateShippingCost } from '../services/orderService';
 import type { PaymentMethod, ShippingData } from '../types';
 import { storeConfig } from '../config/storeConfig';
 
@@ -32,43 +27,42 @@ export function CheckoutPage() {
     notes: '',
   });
   const tax = useMemo(() => Number((cartSubtotal * 0.15).toFixed(2)), [cartSubtotal]);
-  const total = cartSubtotal + tax;
-  const paymentOptions = useMemo(
-    () => {
-      const configured = [
-        storeConfig.enableBankTransfer && {
-          method: 'Transferencia' as PaymentMethod,
-          icon: <LockKeyhole />,
-          description: 'Validación manual con comprobante o referencia.',
-          instructions: storeConfig.bankTransferInstructions,
-        },
-        storeConfig.enableCashOnDelivery && {
-          method: 'Contra entrega' as PaymentMethod,
-          icon: <PackageCheck />,
-          description: 'Pago al recibir el pedido.',
-          instructions: storeConfig.cashOnDeliveryInstructions,
-        },
-        storeConfig.enableCardPayments && {
-          method: 'Tarjeta' as PaymentMethod,
-          icon: <CreditCard />,
-          description: 'Pago con proveedor conectado.',
-          instructions: storeConfig.cardPaymentInstructions,
-        },
-      ].filter(Boolean) as Array<{ method: PaymentMethod; icon: ReactNode; description: string; instructions: string }>;
+  const shippingCost = useMemo(() => calculateShippingCost(cartSubtotal), [cartSubtotal]);
+  const total = cartSubtotal + tax + shippingCost;
+  const remainingForFreeShipping = Math.max(0, storeConfig.freeShippingThreshold - cartSubtotal);
+  const paymentOptions = useMemo(() => {
+    const configured = [
+      storeConfig.enableBankTransfer && {
+        method: 'Transferencia' as PaymentMethod,
+        icon: <LockKeyhole />,
+        description: 'Validación manual con comprobante o referencia.',
+        instructions: storeConfig.bankTransferInstructions,
+      },
+      storeConfig.enableCashOnDelivery && {
+        method: 'Contra entrega' as PaymentMethod,
+        icon: <PackageCheck />,
+        description: 'Pago al recibir el pedido.',
+        instructions: storeConfig.cashOnDeliveryInstructions,
+      },
+      storeConfig.enableCardPayments && {
+        method: 'Tarjeta' as PaymentMethod,
+        icon: <CreditCard />,
+        description: 'Pago con proveedor conectado.',
+        instructions: storeConfig.cardPaymentInstructions,
+      },
+    ].filter(Boolean) as Array<{ method: PaymentMethod; icon: ReactNode; description: string; instructions: string }>;
 
-      return configured.length
-        ? configured
-        : [
-            {
-              method: 'Transferencia' as PaymentMethod,
-              icon: <LockKeyhole />,
-              description: 'Validación manual con comprobante o referencia.',
-              instructions: storeConfig.bankTransferInstructions,
-            },
-          ];
-    },
-    [],
-  );
+    return configured.length
+      ? configured
+      : [
+          {
+            method: 'Transferencia' as PaymentMethod,
+            icon: <LockKeyhole />,
+            description: 'Validación manual con comprobante o referencia.',
+            instructions: storeConfig.bankTransferInstructions,
+          },
+        ];
+  }, []);
   const selectedPayment = paymentOptions.find((option) => option.method === payment) ?? paymentOptions[0];
 
   useEffect(() => {
@@ -86,14 +80,7 @@ export function CheckoutPage() {
       setError('Debes iniciar sesión antes de realizar el pedido.');
       return;
     }
-    if (
-      !shipping.fullName ||
-      !shipping.email ||
-      !shipping.phone ||
-      !shipping.province ||
-      !shipping.city ||
-      !shipping.address
-    ) {
+    if (!shipping.fullName || !shipping.email || !shipping.phone || !shipping.province || !shipping.city || !shipping.address) {
       setError('Completa todos los campos obligatorios de entrega.');
       return;
     }
@@ -136,46 +123,29 @@ export function CheckoutPage() {
               <div className="form-grid">
                 <label>
                   Nombre completo *
-                  <input
-                    value={shipping.fullName}
-                    onChange={(e) => setShipping({ ...shipping, fullName: e.target.value })}
-                  />
+                  <input value={shipping.fullName} onChange={(event) => setShipping({ ...shipping, fullName: event.target.value })} />
                 </label>
                 <label>
                   Email *
-                  <input
-                    type="email"
-                    value={shipping.email}
-                    onChange={(e) => setShipping({ ...shipping, email: e.target.value })}
-                  />
+                  <input type="email" value={shipping.email} onChange={(event) => setShipping({ ...shipping, email: event.target.value })} />
                 </label>
                 <label>
                   Teléfono *
-                  <input
-                    value={shipping.phone}
-                    onChange={(e) => setShipping({ ...shipping, phone: e.target.value })}
-                    placeholder="099 000 0000"
-                  />
+                  <input value={shipping.phone} onChange={(event) => setShipping({ ...shipping, phone: event.target.value })} placeholder="099 000 0000" />
                 </label>
                 <label>
                   Provincia *
-                  <input
-                    value={shipping.province}
-                    onChange={(e) => setShipping({ ...shipping, province: e.target.value })}
-                  />
+                  <input value={shipping.province} onChange={(event) => setShipping({ ...shipping, province: event.target.value })} />
                 </label>
                 <label>
                   Ciudad *
-                  <input
-                    value={shipping.city}
-                    onChange={(e) => setShipping({ ...shipping, city: e.target.value })}
-                  />
+                  <input value={shipping.city} onChange={(event) => setShipping({ ...shipping, city: event.target.value })} />
                 </label>
                 <label className="full-span">
                   Dirección *
                   <input
                     value={shipping.address}
-                    onChange={(e) => setShipping({ ...shipping, address: e.target.value })}
+                    onChange={(event) => setShipping({ ...shipping, address: event.target.value })}
                     placeholder="Calle, número y referencia de entrega"
                   />
                 </label>
@@ -183,15 +153,38 @@ export function CheckoutPage() {
                   Notas del pedido
                   <textarea
                     value={shipping.notes}
-                    onChange={(e) => setShipping({ ...shipping, notes: e.target.value })}
+                    onChange={(event) => setShipping({ ...shipping, notes: event.target.value })}
                     placeholder="Información adicional para la entrega"
                   />
                 </label>
               </div>
             </section>
+
             <section className="form-card">
               <div className="form-card-title">
                 <span>2</span>
+                <div>
+                  <h3>Entrega</h3>
+                  <p>El costo de envío se calcula según el total del carrito.</p>
+                </div>
+              </div>
+              <div className="shipping-rule-card">
+                <Truck size={22} />
+                <span>
+                  <strong>{shippingCost === 0 ? 'Envío gratis aplicado' : `Envío: $${shippingCost.toFixed(2)}`}</strong>
+                  <small>
+                    {shippingCost === 0
+                      ? `Tu compra supera el mínimo de $${storeConfig.freeShippingThreshold.toFixed(2)}.`
+                      : `Agrega $${remainingForFreeShipping.toFixed(2)} para envío gratis.`}
+                  </small>
+                  <small>{storeConfig.shippingCoverageNote}</small>
+                </span>
+              </div>
+            </section>
+
+            <section className="form-card">
+              <div className="form-card-title">
+                <span>3</span>
                 <div>
                   <h3>Método de pago</h3>
                   <p>Elige cómo el cliente pagará este pedido.</p>
@@ -200,12 +193,7 @@ export function CheckoutPage() {
               <div className="payment-options">
                 {paymentOptions.map(({ method, icon, description }) => (
                   <label className={payment === method ? 'payment-option selected' : 'payment-option'} key={method}>
-                    <input
-                      type="radio"
-                      name="payment"
-                      checked={payment === method}
-                      onChange={() => setPayment(method)}
-                    />
+                    <input type="radio" name="payment" checked={payment === method} onChange={() => setPayment(method)} />
                     {icon}
                     <span>
                       <strong>{method}</strong>
@@ -262,6 +250,10 @@ export function CheckoutPage() {
                 <span>IVA (15%)</span>
                 <strong>${tax.toFixed(2)}</strong>
               </div>
+              <div>
+                <span>Envío</span>
+                <strong>{shippingCost === 0 ? 'Gratis' : `$${shippingCost.toFixed(2)}`}</strong>
+              </div>
               <div className="summary-total">
                 <span>Total</span>
                 <strong>${total.toFixed(2)}</strong>
@@ -271,7 +263,7 @@ export function CheckoutPage() {
               {placingOrder ? 'Registrando pedido...' : 'Realizar pedido'}
             </button>
             <p className="secure-note">
-              <LockKeyhole size={15} /> Precios y stock se validan antes de registrar el pedido.
+              <LockKeyhole size={15} /> Precios, stock y envío se validan antes de registrar el pedido.
             </p>
           </aside>
         </form>

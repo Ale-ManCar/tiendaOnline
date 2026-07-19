@@ -58,6 +58,7 @@ export function ConfirmationPage() {
             <p>
               {order.shipping.email} · {order.shipping.phone}
             </p>
+            <p>Envío: {order.shippingCost === 0 ? 'Gratis' : `$${order.shippingCost.toFixed(2)}`}</p>
 
             <h3>Pago</h3>
             <p>{order.paymentMethod}</p>

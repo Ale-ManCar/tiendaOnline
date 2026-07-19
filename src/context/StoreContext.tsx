@@ -3,7 +3,7 @@ import type { CartItem, Category, Order, OrderStatus, PaymentMethod, Product, Re
 import { cartKey, KEYS, readStorage, uid, writeStorage } from '../utils/storage';
 import { loginAccount, logoutAccount, registerAccount, restoreSession } from '../services/authService';
 import { fetchStorefrontCatalog } from '../services/catalogService';
-import { createServerOrder } from '../services/orderService';
+import { calculateOrder, createServerOrder } from '../services/orderService';
 import { isApiUnavailable } from '../services/demoMode';
 import { storeConfig } from '../config/storeConfig';
 
@@ -378,8 +378,7 @@ function createLocalOrder(
       image: product.image,
     };
   });
-  const subtotal = round(items.reduce((sum, item) => sum + item.price * item.quantity, 0));
-  const tax = round(subtotal * 0.15);
+  const totals = calculateOrder(items);
   const date = now();
 
   return {
@@ -389,9 +388,10 @@ function createLocalOrder(
     customerEmail: shipping.email,
     createdAt: date,
     items,
-    subtotal,
-    tax,
-    total: round(subtotal + tax),
+    subtotal: totals.subtotal,
+    tax: totals.tax,
+    shippingCost: totals.shippingCost,
+    total: totals.total,
     paymentMethod,
     paymentReference,
     shipping,

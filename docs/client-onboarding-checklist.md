@@ -38,6 +38,9 @@ VITE_STORE_LOCATION=
 VITE_STORE_BUSINESS_HOURS=
 VITE_STORE_FOOTER_NOTE=
 VITE_STORE_DEFAULT_CITY=
+VITE_SHIPPING_FLAT_RATE=
+VITE_FREE_SHIPPING_THRESHOLD=
+VITE_SHIPPING_COVERAGE_NOTE=
 VITE_ENABLE_CARD_PAYMENTS=false
 VITE_ENABLE_BANK_TRANSFER=true
 VITE_ENABLE_CASH_ON_DELIVERY=true
@@ -110,6 +113,8 @@ Define shipping rules:
 - Delivery times.
 - Pickup option, if available.
 - Delivery provider, if any.
+
+The storefront currently supports a configurable flat shipping rate and a free-shipping threshold through `VITE_SHIPPING_FLAT_RATE` and `VITE_FREE_SHIPPING_THRESHOLD`.
 
 ## 7. Legal and policy pages
 

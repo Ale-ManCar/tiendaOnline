@@ -67,7 +67,8 @@ export function OrdersPage() {
                     {order.paymentReference ? ` · Ref: ${order.paymentReference}` : ''}
                   </span>
                   <span>
-                    <strong>Entrega:</strong> {order.shipping.address}, {order.shipping.city}
+                    <strong>Envío:</strong> {order.shippingCost === 0 ? 'Gratis' : `$${order.shippingCost.toFixed(2)}`} · {order.shipping.address},{' '}
+                    {order.shipping.city}
                   </span>
                 </footer>
               </article>

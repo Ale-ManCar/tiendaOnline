@@ -190,6 +190,7 @@ export function AdminPage() {
                   <tr>
                     <th>Código</th>
                     <th>Cliente</th>
+                    <th>Envío</th>
                     <th>Total</th>
                     <th>Pago</th>
                     <th>Estado</th>
@@ -202,6 +203,10 @@ export function AdminPage() {
                       <td>
                         {order.shipping.fullName}
                         <small className="block">{order.shipping.email}</small>
+                      </td>
+                      <td>
+                        {order.shippingCost === 0 ? 'Gratis' : `$${order.shippingCost.toFixed(2)}`}
+                        <small className="block">{order.shipping.city}</small>
                       </td>
                       <td>${order.total.toFixed(2)}</td>
                       <td>

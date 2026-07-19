@@ -10,6 +10,11 @@ const booleanValue = (key: string, fallback: boolean) => {
   return ['1', 'true', 'yes', 'on'].includes(candidate);
 };
 
+const numberValue = (key: string, fallback: number) => {
+  const candidate = Number(value(key, String(fallback)));
+  return Number.isFinite(candidate) ? candidate : fallback;
+};
+
 export const storeConfig = {
   name: value('VITE_STORE_NAME', 'Nova Store'),
   legalName: value('VITE_STORE_LEGAL_NAME', value('VITE_STORE_NAME', 'Nova Store')),
@@ -23,6 +28,9 @@ export const storeConfig = {
   businessHours: value('VITE_STORE_BUSINESS_HOURS', 'Lun-Vie, 09:00-18:00'),
   footerNote: value('VITE_STORE_FOOTER_NOTE', 'Tienda online profesional'),
   defaultCheckoutCity: value('VITE_STORE_DEFAULT_CITY', 'Guayaquil'),
+  shippingFlatRate: numberValue('VITE_SHIPPING_FLAT_RATE', 5),
+  freeShippingThreshold: numberValue('VITE_FREE_SHIPPING_THRESHOLD', 100),
+  shippingCoverageNote: value('VITE_SHIPPING_COVERAGE_NOTE', 'Entrega disponible según cobertura del negocio.'),
   enableCardPayments: booleanValue('VITE_ENABLE_CARD_PAYMENTS', false),
   enableBankTransfer: booleanValue('VITE_ENABLE_BANK_TRANSFER', true),
   enableCashOnDelivery: booleanValue('VITE_ENABLE_CASH_ON_DELIVERY', true),
