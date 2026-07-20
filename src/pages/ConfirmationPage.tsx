@@ -1,11 +1,13 @@
-import { CheckCircle2, Package, ShoppingBag } from 'lucide-react';
+import { CheckCircle2, Copy, MessageCircle, Package, ShoppingBag } from 'lucide-react';
+import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useStore } from '../context/StoreContext';
 import { formatMoney, formatShippingCost, getOrderShipping } from '../utils/orderDisplay';
 
 export function ConfirmationPage() {
   const { id } = useParams();
-  const { orders, currentUser } = useStore();
+  const { orders, currentUser, storeSettings } = useStore();
+  const [copyMessage, setCopyMessage] = useState('');
   const order = orders.find((candidate) => candidate.id === id);
 
   if (!order || (currentUser?.role !== 'admin' && order.userId !== currentUser?.id)) {
@@ -20,6 +22,21 @@ export function ConfirmationPage() {
   }
 
   const shipping = getOrderShipping(order);
+  const supportPhoneDigits = storeSettings.supportPhone.replace(/\D/g, '');
+  const whatsappPhone = supportPhoneDigits.startsWith('593') ? supportPhoneDigits : supportPhoneDigits.replace(/^0/, '593');
+  const whatsappMessage = encodeURIComponent(
+    `Hola, quisiera consultar sobre mi pedido ${order.id}.\nNombre: ${shipping.fullName}\nTotal: ${formatMoney(order.total)}\nEstado: ${order.status}`,
+  );
+  const whatsappUrl = whatsappPhone ? `https://wa.me/${whatsappPhone}?text=${whatsappMessage}` : '';
+
+  const copyOrderCode = async () => {
+    try {
+      await navigator.clipboard.writeText(order.id);
+      setCopyMessage('Código copiado.');
+    } catch {
+      setCopyMessage(`Copia manualmente: ${order.id}`);
+    }
+  };
 
   return (
     <section className="section confirmation-page">
@@ -34,6 +51,7 @@ export function ConfirmationPage() {
             <span>Código de pedido</span>
             <strong>{order.id}</strong>
           </div>
+          {copyMessage && <p className="copy-feedback">{copyMessage}</p>}
 
           <div className="confirmation-grid">
             <div>
@@ -69,6 +87,14 @@ export function ConfirmationPage() {
           </div>
 
           <div className="confirmation-actions">
+            <button className="button secondary" type="button" onClick={copyOrderCode}>
+              <Copy size={18} /> Copiar código
+            </button>
+            {whatsappUrl && (
+              <a className="button secondary" href={whatsappUrl} target="_blank" rel="noreferrer">
+                <MessageCircle size={18} /> Consultar por WhatsApp
+              </a>
+            )}
             <Link className="button primary" to="/pedidos">
               Ver mis pedidos
             </Link>

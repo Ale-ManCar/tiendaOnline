@@ -251,6 +251,7 @@ textarea { padding-top: 12px !important; min-height: 95px !important; resize: ve
 .confirmation-card h1 { font-size: 45px; letter-spacing: -.05em; margin-bottom: 9px; }
 .confirmation-card > p { color: var(--muted); }
 .order-code { margin: 26px auto; padding: 16px; border-radius: 13px; background: var(--soft); display: flex; justify-content: space-between; max-width: 430px; }
+.copy-feedback { max-width: 430px; margin: -16px auto 22px; border-radius: 999px; padding: 8px 12px; background: #e8f8ef; color: var(--green); font-size: 13px; font-weight: 800; }
 .confirmation-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 430px; margin: auto; }
 .confirmation-grid > div { display: flex; align-items: center; gap: 11px; padding: 15px; text-align: left; border: 1px solid var(--line); border-radius: 13px; }
 .confirmation-grid span { display: flex; flex-direction: column; }
