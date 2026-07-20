@@ -377,6 +377,26 @@ td { padding: 13px 10px; border-bottom: 1px solid var(--line); font-size: 13px; 
 .admin-product-form { width: min(760px, 100%); }
 .admin-product-form .form-grid { margin-top: 22px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; flex-wrap: wrap; }
+.sales-insights { min-width: 900px; }
+.insight-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 16px; }
+.insight-grid article, .insight-card { border: 1px solid var(--line); background: #fbfbf9; border-radius: 18px; padding: 18px; }
+.insight-grid article { display: flex; flex-direction: column; gap: 5px; }
+.insight-grid small, .muted-text { color: var(--muted); }
+.insight-grid article > small { text-transform: uppercase; letter-spacing: .08em; font-size: 11px; font-weight: 900; }
+.insight-grid strong { font-family: 'Manrope'; font-size: 28px; letter-spacing: -.035em; }
+.insight-grid span { color: var(--muted); font-size: 13px; }
+.insight-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.insight-card h3 { font-size: 18px; margin-bottom: 14px; }
+.rank-list { display: grid; gap: 10px; }
+.rank-list > div { display: grid; grid-template-columns: 34px 1fr; gap: 4px 10px; align-items: center; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.rank-list > div:last-child { border-bottom: 0; padding-bottom: 0; }
+.rank-list span { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: white; color: var(--accent); font-weight: 900; }
+.rank-list small { grid-column: 2; color: var(--muted); }
+.recent-orders { display: grid; gap: 10px; }
+.recent-orders > div { display: grid; grid-template-columns: 1fr auto auto; gap: 14px; align-items: center; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.recent-orders > div:last-child { border-bottom: 0; padding-bottom: 0; }
+.recent-orders span:first-child { display: flex; flex-direction: column; gap: 3px; }
+.recent-orders small { color: var(--muted); }
 .settings-panel { min-width: 900px; }
 .settings-grid { display: grid; gap: 18px; }
 .settings-grid fieldset { border: 1px solid var(--line); border-radius: 18px; padding: 18px; background: #fbfbf9; display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
@@ -539,6 +559,9 @@ td { padding: 13px 10px; border-bottom: 1px solid var(--line); font-size: 13px; 
   .legal-note { align-items: flex-start; }
   .admin-stats { grid-template-columns: 1fr; }
   .admin-toolbar { align-items: stretch; flex-direction: column; }
+  .sales-insights { min-width: 0; }
+  .insight-grid, .insight-columns { grid-template-columns: 1fr; }
+  .recent-orders > div { grid-template-columns: 1fr; align-items: start; }
   .settings-panel { min-width: 0; }
   .settings-grid fieldset { grid-template-columns: 1fr; }
   .admin-order-head, .admin-order-grid, .admin-order-bottom { grid-template-columns: 1fr; }

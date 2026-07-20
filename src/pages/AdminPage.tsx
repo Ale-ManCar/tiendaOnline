@@ -7,6 +7,7 @@ import { formatMoney, formatShippingCost, getOrderShipping, getOrderTotal } from
 import { categorySchema, productSchema } from '../validation/schemas';
 
 const tabs = {
+  insights: 'Resumen',
   products: 'Productos',
   categories: 'Categorías',
   orders: 'Pedidos',
@@ -18,7 +19,7 @@ const LOW_STOCK_THRESHOLD = 5;
 
 export function AdminPage() {
   const store = useStore();
-  const [tab, setTab] = useState<keyof typeof tabs>('products');
+  const [tab, setTab] = useState<keyof typeof tabs>('insights');
   const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [creatingProduct, setCreatingProduct] = useState(false);
@@ -33,6 +34,7 @@ export function AdminPage() {
   const lowStockProducts = activeProducts.filter((product) => product.stock > 0 && product.stock <= LOW_STOCK_THRESHOLD);
   const outOfStockProducts = activeProducts.filter((product) => product.stock === 0);
   const visibleProducts = showLowStockOnly ? store.products.filter((product) => product.active && product.stock <= LOW_STOCK_THRESHOLD) : store.products;
+  const insights = getSalesInsights(store.orders);
 
   const closeProductForm = () => {
     setEditingProduct(null);
@@ -107,6 +109,8 @@ export function AdminPage() {
 
         <div className="admin-card">
           <div className="table-wrap">
+            {tab === 'insights' && <SalesInsightsPanel insights={insights} orders={store.orders} />}
+
             {tab === 'products' && (
               <>
                 <div className="admin-toolbar">
@@ -402,6 +406,137 @@ export function AdminPage() {
 
 type ProductFormData = Omit<Product, 'id' | 'createdAt' | 'updatedAt'>;
 type CategoryFormData = Omit<Category, 'id' | 'createdAt' | 'slug'>;
+
+type SalesInsights = ReturnType<typeof getSalesInsights>;
+
+function SalesInsightsPanel({ insights, orders }: { insights: SalesInsights; orders: Order[] }) {
+  return (
+    <section className="sales-insights">
+      <div className="admin-toolbar">
+        <div>
+          <h2>Resumen comercial</h2>
+          <p>Una lectura rápida del rendimiento actual de la tienda y los pedidos recientes.</p>
+        </div>
+      </div>
+
+      <div className="insight-grid">
+        <article>
+          <small>Ingresos totales</small>
+          <strong>{formatMoney(insights.revenue)}</strong>
+          <span>{orders.length} pedidos registrados</span>
+        </article>
+        <article>
+          <small>Ticket promedio</small>
+          <strong>{formatMoney(insights.averageOrderValue)}</strong>
+          <span>Promedio por pedido</span>
+        </article>
+        <article>
+          <small>Pedidos pendientes</small>
+          <strong>{insights.pendingOrders}</strong>
+          <span>Requieren revisión</span>
+        </article>
+        <article>
+          <small>Pedidos entregados</small>
+          <strong>{insights.deliveredOrders}</strong>
+          <span>Ventas completadas</span>
+        </article>
+      </div>
+
+      <div className="insight-columns">
+        <article className="insight-card">
+          <h3>Productos más vendidos</h3>
+          {insights.topProducts.length ? (
+            <div className="rank-list">
+              {insights.topProducts.map((product, index) => (
+                <div key={product.name}>
+                  <span>{index + 1}</span>
+                  <strong>{product.name}</strong>
+                  <small>{product.quantity} unidades · {formatMoney(product.revenue)}</small>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="muted-text">Aún no hay productos vendidos.</p>
+          )}
+        </article>
+
+        <article className="insight-card">
+          <h3>Ingresos por método de pago</h3>
+          {insights.paymentMix.length ? (
+            <div className="rank-list">
+              {insights.paymentMix.map((payment) => (
+                <div key={payment.method}>
+                  <span>{payment.count}</span>
+                  <strong>{payment.method}</strong>
+                  <small>{formatMoney(payment.revenue)}</small>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="muted-text">Aún no hay pagos registrados.</p>
+          )}
+        </article>
+      </div>
+
+      <article className="insight-card">
+        <h3>Pedidos recientes</h3>
+        {insights.recentOrders.length ? (
+          <div className="recent-orders">
+            {insights.recentOrders.map((order) => {
+              const shipping = getOrderShipping(order);
+
+              return (
+                <div key={order.id}>
+                  <span>
+                    <strong>{order.id}</strong>
+                    <small>{shipping.fullName}</small>
+                  </span>
+                  <span>{formatMoney(order.total)}</span>
+                  <span className={`status status-${order.status.toLowerCase()}`}>{order.status}</span>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="muted-text">Cuando entren pedidos, aparecerán aquí.</p>
+        )}
+      </article>
+    </section>
+  );
+}
+
+function getSalesInsights(orders: Order[]) {
+  const revenue = orders.reduce((sum, order) => sum + getOrderTotal(order), 0);
+  const averageOrderValue = orders.length ? revenue / orders.length : 0;
+  const pendingOrders = orders.filter((order) => order.status === 'Pendiente').length;
+  const deliveredOrders = orders.filter((order) => order.status === 'Entregado').length;
+  const productMap = new Map<string, { name: string; quantity: number; revenue: number }>();
+  const paymentMap = new Map<string, { method: string; count: number; revenue: number }>();
+
+  orders.forEach((order) => {
+    const payment = paymentMap.get(order.paymentMethod) ?? { method: order.paymentMethod, count: 0, revenue: 0 };
+    payment.count += 1;
+    payment.revenue += getOrderTotal(order);
+    paymentMap.set(order.paymentMethod, payment);
+
+    (order.items ?? []).forEach((item) => {
+      const product = productMap.get(item.name) ?? { name: item.name, quantity: 0, revenue: 0 };
+      product.quantity += item.quantity;
+      product.revenue += item.price * item.quantity;
+      productMap.set(item.name, product);
+    });
+  });
+
+  return {
+    revenue,
+    averageOrderValue,
+    pendingOrders,
+    deliveredOrders,
+    topProducts: [...productMap.values()].sort((first, second) => second.quantity - first.quantity).slice(0, 5),
+    paymentMix: [...paymentMap.values()].sort((first, second) => second.revenue - first.revenue),
+    recentOrders: [...orders].sort((first, second) => new Date(second.createdAt).getTime() - new Date(first.createdAt).getTime()).slice(0, 5),
+  };
+}
 
 function StoreSettingsPanel({
   settings,
