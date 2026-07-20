@@ -60,6 +60,7 @@ export function Layout() {
           <nav className={menuOpen ? 'main-nav open' : 'main-nav'} aria-label="Navegación principal">
             <NavLink to="/" onClick={closeNavigation}>Inicio</NavLink>
             <NavLink to="/catalogo" onClick={closeNavigation}>Catálogo</NavLink>
+            <NavLink to="/rastreo" onClick={closeNavigation}>Rastrear pedido</NavLink>
             {currentUser && <NavLink to="/pedidos" onClick={closeNavigation}>Mis pedidos</NavLink>}
             {currentUser?.role === 'admin' && <NavLink to="/admin" onClick={closeNavigation}>Administración</NavLink>}
             <form className="mobile-search" onSubmit={submitSearch}>
@@ -114,7 +115,7 @@ export function Layout() {
       <footer className="site-footer">
         <div className="container footer-grid">
           <div><Link to="/" className="brand light"><span>{storeConfig.logoLetter}</span> {storeConfig.shortName}</Link><p>{storeConfig.tagline}</p></div>
-          <div><h4>Navegación</h4><Link to="/">Inicio</Link><Link to="/catalogo">Catálogo</Link><Link to="/pedidos">Mis pedidos</Link></div>
+          <div><h4>Navegación</h4><Link to="/">Inicio</Link><Link to="/catalogo">Catálogo</Link><Link to="/rastreo">Rastrear pedido</Link><Link to="/pedidos">Mis pedidos</Link></div>
           <div><h4>Ayuda</h4><Link to="/legal/contacto">Contacto</Link><a href={`mailto:${storeConfig.supportEmail}`}>{storeConfig.supportEmail}</a><span>{storeConfig.location}</span><span>{storeConfig.businessHours}</span></div>
           <div><h4>Legal</h4><Link to="/legal/terminos">Términos y condiciones</Link><Link to="/legal/privacidad">Privacidad</Link><Link to="/legal/devoluciones">Devoluciones</Link><Link to="/legal/envios">Envíos</Link></div>
         </div>

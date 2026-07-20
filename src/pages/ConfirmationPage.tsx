@@ -72,6 +72,9 @@ export function ConfirmationPage() {
             <Link className="button primary" to="/pedidos">
               Ver mis pedidos
             </Link>
+            <Link className="button secondary" to="/rastreo">
+              Rastrear pedido
+            </Link>
             <Link className="button secondary" to="/catalogo">
               Seguir comprando
             </Link>

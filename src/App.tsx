@@ -9,6 +9,7 @@ import { HomePage } from './pages/HomePage';
 import { LegalPage } from './pages/LegalPage';
 import { OrdersPage } from './pages/OrdersPage';
 import { ProductDetailPage } from './pages/ProductDetailPage';
+import { TrackingPage } from './pages/TrackingPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
@@ -22,6 +23,7 @@ export default function App() {
             <Route path="/catalogo" element={<CatalogPage />} />
             <Route path="/producto/:id" element={<ProductDetailPage />} />
             <Route path="/legal/:policy" element={<LegalPage />} />
+            <Route path="/rastreo" element={<TrackingPage />} />
             <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
             <Route path="/confirmacion/:id" element={<ProtectedRoute><ConfirmationPage /></ProtectedRoute>} />
             <Route path="/pedidos" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
