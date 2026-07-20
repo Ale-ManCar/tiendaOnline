@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useStore } from '../context/StoreContext';
 import type { Category, Order, OrderStatus, Product } from '../types';
+import type { StoreSettings } from '../config/storeConfig';
 import { formatMoney, formatShippingCost, getOrderShipping, getOrderTotal } from '../utils/orderDisplay';
 import { categorySchema, productSchema } from '../validation/schemas';
 
@@ -10,6 +11,7 @@ const tabs = {
   categories: 'Categorías',
   orders: 'Pedidos',
   users: 'Usuarios',
+  settings: 'Configuración',
 } as const;
 
 const LOW_STOCK_THRESHOLD = 5;
@@ -314,6 +316,21 @@ export function AdminPage() {
                 </tbody>
               </table>
             )}
+
+            {tab === 'settings' && (
+              <StoreSettingsPanel
+                key={JSON.stringify(store.storeSettings)}
+                settings={store.storeSettings}
+                onSubmit={(settings) => {
+                  const result = store.updateStoreSettings(settings);
+                  setAdminMessage({ type: result.ok ? 'success' : 'error', text: result.message });
+                }}
+                onReset={() => {
+                  const result = store.restoreDefaultStoreSettings();
+                  setAdminMessage({ type: result.ok ? 'success' : 'error', text: result.message });
+                }}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -385,6 +402,93 @@ export function AdminPage() {
 
 type ProductFormData = Omit<Product, 'id' | 'createdAt' | 'updatedAt'>;
 type CategoryFormData = Omit<Category, 'id' | 'createdAt' | 'slug'>;
+
+function StoreSettingsPanel({
+  settings,
+  onSubmit,
+  onReset,
+}: {
+  settings: StoreSettings;
+  onSubmit: (settings: StoreSettings) => void;
+  onReset: () => void;
+}) {
+  const submit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+
+    onSubmit({
+      name: String(form.get('name') ?? ''),
+      legalName: String(form.get('legalName') ?? ''),
+      shortName: String(form.get('shortName') ?? ''),
+      logoLetter: String(form.get('logoLetter') ?? ''),
+      announcement: String(form.get('announcement') ?? ''),
+      tagline: String(form.get('tagline') ?? ''),
+      supportEmail: String(form.get('supportEmail') ?? ''),
+      supportPhone: String(form.get('supportPhone') ?? ''),
+      location: String(form.get('location') ?? ''),
+      businessHours: String(form.get('businessHours') ?? ''),
+      footerNote: String(form.get('footerNote') ?? ''),
+      defaultCheckoutCity: String(form.get('defaultCheckoutCity') ?? ''),
+      shippingFlatRate: Number(form.get('shippingFlatRate') ?? 0),
+      freeShippingThreshold: Number(form.get('freeShippingThreshold') ?? 0),
+      shippingCoverageNote: String(form.get('shippingCoverageNote') ?? ''),
+      bankAccountLabel: String(form.get('bankAccountLabel') ?? ''),
+      bankTransferInstructions: String(form.get('bankTransferInstructions') ?? ''),
+      cashOnDeliveryInstructions: String(form.get('cashOnDeliveryInstructions') ?? ''),
+    });
+  };
+
+  return (
+    <form className="settings-panel" onSubmit={submit}>
+      <div className="admin-toolbar">
+        <div>
+          <h2>Configuración de tienda</h2>
+          <p>Personaliza la identidad, contacto y reglas comerciales visibles para el cliente.</p>
+        </div>
+        <div className="admin-toolbar-actions">
+          <button className="button secondary" type="button" onClick={() => confirm('¿Restaurar la configuración original?') && onReset()}>
+            Restaurar
+          </button>
+          <button className="button primary" type="submit">
+            Guardar cambios
+          </button>
+        </div>
+      </div>
+
+      <div className="settings-grid">
+        <fieldset>
+          <legend>Marca</legend>
+          <label>Nombre de tienda<input name="name" defaultValue={settings.name} required /></label>
+          <label>Nombre legal<input name="legalName" defaultValue={settings.legalName} required /></label>
+          <label>Nombre corto<input name="shortName" defaultValue={settings.shortName} required /></label>
+          <label>Logo simple<input name="logoLetter" defaultValue={settings.logoLetter} maxLength={2} required /></label>
+          <label className="full-span">Frase de marca<textarea name="tagline" defaultValue={settings.tagline} required /></label>
+          <label className="full-span">Barra superior<textarea name="announcement" defaultValue={settings.announcement} required /></label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Contacto</legend>
+          <label>Correo de soporte<input name="supportEmail" type="email" defaultValue={settings.supportEmail} required /></label>
+          <label>Teléfono<input name="supportPhone" defaultValue={settings.supportPhone} required /></label>
+          <label>Ubicación<input name="location" defaultValue={settings.location} required /></label>
+          <label>Horario<input name="businessHours" defaultValue={settings.businessHours} required /></label>
+          <label className="full-span">Nota del footer<input name="footerNote" defaultValue={settings.footerNote} required /></label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Envíos y pago</legend>
+          <label>Ciudad por defecto<input name="defaultCheckoutCity" defaultValue={settings.defaultCheckoutCity} required /></label>
+          <label>Costo fijo de envío<input name="shippingFlatRate" type="number" min="0" step="0.01" defaultValue={settings.shippingFlatRate} required /></label>
+          <label>Mínimo para envío gratis<input name="freeShippingThreshold" type="number" min="0" step="0.01" defaultValue={settings.freeShippingThreshold} required /></label>
+          <label>Cuenta bancaria<input name="bankAccountLabel" defaultValue={settings.bankAccountLabel} required /></label>
+          <label className="full-span">Nota de cobertura<textarea name="shippingCoverageNote" defaultValue={settings.shippingCoverageNote} required /></label>
+          <label className="full-span">Instrucciones de transferencia<textarea name="bankTransferInstructions" defaultValue={settings.bankTransferInstructions} required /></label>
+          <label className="full-span">Instrucciones contra entrega<textarea name="cashOnDeliveryInstructions" defaultValue={settings.cashOnDeliveryInstructions} required /></label>
+        </fieldset>
+      </div>
+    </form>
+  );
+}
 
 function OrderDetailModal({
   order,

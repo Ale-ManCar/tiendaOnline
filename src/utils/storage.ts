@@ -1,5 +1,5 @@
 export const STORAGE_VERSION = 2;
-export const KEYS = { products:'nova_products', users:'nova_users', session:'nova_current_user', orders:'nova_orders', categories:'nova_categories', guestCart:'nova_cart_guest', legacyCart:'nova_cart' } as const;
+export const KEYS = { products:'nova_products', users:'nova_users', session:'nova_current_user', orders:'nova_orders', categories:'nova_categories', settings:'nova_store_settings', guestCart:'nova_cart_guest', legacyCart:'nova_cart' } as const;
 type Envelope<T>={version:number;data:T};
 export function readStorage<T>(key:string,fallback:T):T { try { const raw=localStorage.getItem(key); if(!raw)return fallback; const value:unknown=JSON.parse(raw); if(value&&typeof value==='object'&&'version' in value&&'data' in value)return (value as Envelope<T>).data; return value as T; } catch { localStorage.removeItem(key); return fallback; } }
 export function writeStorage<T>(key:string,value:T){ try{localStorage.setItem(key,JSON.stringify({version:STORAGE_VERSION,data:value}));}catch{/* Storage may be unavailable or full. */} }

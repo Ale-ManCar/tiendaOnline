@@ -5,10 +5,9 @@ import { useStore } from '../context/StoreContext';
 import { AuthModal } from './AuthModal';
 import { CartDrawer } from './CartDrawer';
 import { Toast, type ToastState } from './Toast';
-import { storeConfig } from '../config/storeConfig';
 
 export function Layout() {
-  const { currentUser, cartCount, logout } = useStore();
+  const { currentUser, cartCount, logout, storeSettings } = useStore();
   const [authOpen, setAuthOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -53,10 +52,10 @@ export function Layout() {
 
   return (
     <div className="site-shell">
-      <div className="announcement">{storeConfig.announcement}</div>
+      <div className="announcement">{storeSettings.announcement}</div>
       <header className="site-header">
         <div className="container header-inner">
-          <Link to="/" className="brand" onClick={closeNavigation}><span>{storeConfig.logoLetter}</span> {storeConfig.shortName}</Link>
+          <Link to="/" className="brand" onClick={closeNavigation}><span>{storeSettings.logoLetter}</span> {storeSettings.shortName}</Link>
           <nav className={menuOpen ? 'main-nav open' : 'main-nav'} aria-label="Navegación principal">
             <NavLink to="/" onClick={closeNavigation}>Inicio</NavLink>
             <NavLink to="/catalogo" onClick={closeNavigation}>Catálogo</NavLink>
@@ -113,12 +112,12 @@ export function Layout() {
       <main><Outlet context={{ notify: setToast, openAuth: () => setAuthOpen(true) }} /></main>
       <footer className="site-footer">
         <div className="container footer-grid">
-          <div><Link to="/" className="brand light"><span>{storeConfig.logoLetter}</span> {storeConfig.shortName}</Link><p>{storeConfig.tagline}</p></div>
+          <div><Link to="/" className="brand light"><span>{storeSettings.logoLetter}</span> {storeSettings.shortName}</Link><p>{storeSettings.tagline}</p></div>
           <div><h4>Navegación</h4><Link to="/">Inicio</Link><Link to="/catalogo">Catálogo</Link><Link to="/rastreo">Rastrear pedido</Link><Link to="/pedidos">Mis pedidos</Link></div>
-          <div><h4>Ayuda</h4><Link to="/legal/contacto">Contacto</Link><a href={`mailto:${storeConfig.supportEmail}`}>{storeConfig.supportEmail}</a><span>{storeConfig.location}</span><span>{storeConfig.businessHours}</span></div>
+          <div><h4>Ayuda</h4><Link to="/legal/contacto">Contacto</Link><a href={`mailto:${storeSettings.supportEmail}`}>{storeSettings.supportEmail}</a><span>{storeSettings.location}</span><span>{storeSettings.businessHours}</span></div>
           <div><h4>Legal</h4><Link to="/legal/terminos">Términos y condiciones</Link><Link to="/legal/privacidad">Privacidad</Link><Link to="/legal/devoluciones">Devoluciones</Link><Link to="/legal/envios">Envíos</Link></div>
         </div>
-        <div className="container footer-bottom"><span>© 2026 {storeConfig.name}</span><span>{storeConfig.footerNote}</span></div>
+        <div className="container footer-bottom"><span>© 2026 {storeSettings.name}</span><span>{storeSettings.footerNote}</span></div>
       </footer>
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} notify={setToast} />
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />

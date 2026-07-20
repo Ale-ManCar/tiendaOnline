@@ -377,6 +377,13 @@ td { padding: 13px 10px; border-bottom: 1px solid var(--line); font-size: 13px; 
 .admin-product-form { width: min(760px, 100%); }
 .admin-product-form .form-grid { margin-top: 22px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; flex-wrap: wrap; }
+.settings-panel { min-width: 900px; }
+.settings-grid { display: grid; gap: 18px; }
+.settings-grid fieldset { border: 1px solid var(--line); border-radius: 18px; padding: 18px; background: #fbfbf9; display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+.settings-grid legend { padding: 0 8px; color: var(--accent); font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: .12em; }
+.settings-grid label { display: flex; flex-direction: column; gap: 8px; font-size: 13px; font-weight: 800; color: #45474d; }
+.settings-grid input, .settings-grid textarea { width: 100%; min-height: 46px; border: 1px solid var(--line); background: white; border-radius: 11px; padding: 0 13px; outline: 0; }
+.settings-grid textarea { padding-top: 12px; }
 .admin-order-modal { width: min(980px, 100%); }
 .admin-order-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding-right: 50px; margin-bottom: 22px; }
 .admin-order-head h2 { font-size: 34px; letter-spacing: -.04em; margin-bottom: 4px; }
@@ -532,6 +539,8 @@ td { padding: 13px 10px; border-bottom: 1px solid var(--line); font-size: 13px; 
   .legal-note { align-items: flex-start; }
   .admin-stats { grid-template-columns: 1fr; }
   .admin-toolbar { align-items: stretch; flex-direction: column; }
+  .settings-panel { min-width: 0; }
+  .settings-grid fieldset { grid-template-columns: 1fr; }
   .admin-order-head, .admin-order-grid, .admin-order-bottom { grid-template-columns: 1fr; }
   .admin-order-head { display: grid; padding-right: 42px; }
   .admin-order-panel dl div, .admin-order-totals span { flex-direction: column; gap: 4px; }

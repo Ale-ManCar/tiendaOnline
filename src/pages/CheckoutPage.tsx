@@ -3,14 +3,13 @@ import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 're
 import { Link, Navigate, useNavigate, useOutletContext } from 'react-router-dom';
 import type { ToastState } from '../components/Toast';
 import { useStore } from '../context/StoreContext';
-import { calculateShippingCost } from '../services/orderService';
 import type { PaymentMethod, ShippingData } from '../types';
 import { storeConfig } from '../config/storeConfig';
 
 type OutletContext = { notify: (toast: ToastState) => void; openAuth: () => void };
 
 export function CheckoutPage() {
-  const { currentUser, cart, products, cartSubtotal, createOrder } = useStore();
+  const { currentUser, cart, products, cartSubtotal, createOrder, storeSettings } = useStore();
   const { notify, openAuth } = useOutletContext<OutletContext>();
   const navigate = useNavigate();
   const [payment, setPayment] = useState<PaymentMethod>('Transferencia');
@@ -22,27 +21,30 @@ export function CheckoutPage() {
     email: currentUser?.email ?? '',
     phone: '',
     province: 'Guayas',
-    city: storeConfig.defaultCheckoutCity,
+    city: storeSettings.defaultCheckoutCity,
     address: '',
     notes: '',
   });
   const tax = useMemo(() => Number((cartSubtotal * 0.15).toFixed(2)), [cartSubtotal]);
-  const shippingCost = useMemo(() => calculateShippingCost(cartSubtotal), [cartSubtotal]);
+  const shippingCost = useMemo(
+    () => (storeSettings.freeShippingThreshold > 0 && cartSubtotal >= storeSettings.freeShippingThreshold ? 0 : storeSettings.shippingFlatRate),
+    [cartSubtotal, storeSettings.freeShippingThreshold, storeSettings.shippingFlatRate],
+  );
   const total = cartSubtotal + tax + shippingCost;
-  const remainingForFreeShipping = Math.max(0, storeConfig.freeShippingThreshold - cartSubtotal);
+  const remainingForFreeShipping = Math.max(0, storeSettings.freeShippingThreshold - cartSubtotal);
   const paymentOptions = useMemo(() => {
     const configured = [
       storeConfig.enableBankTransfer && {
         method: 'Transferencia' as PaymentMethod,
         icon: <LockKeyhole />,
         description: 'Validación manual con comprobante o referencia.',
-        instructions: storeConfig.bankTransferInstructions,
+        instructions: storeSettings.bankTransferInstructions,
       },
       storeConfig.enableCashOnDelivery && {
         method: 'Contra entrega' as PaymentMethod,
         icon: <PackageCheck />,
         description: 'Pago al recibir el pedido.',
-        instructions: storeConfig.cashOnDeliveryInstructions,
+        instructions: storeSettings.cashOnDeliveryInstructions,
       },
       storeConfig.enableCardPayments && {
         method: 'Tarjeta' as PaymentMethod,
@@ -59,10 +61,10 @@ export function CheckoutPage() {
             method: 'Transferencia' as PaymentMethod,
             icon: <LockKeyhole />,
             description: 'Validación manual con comprobante o referencia.',
-            instructions: storeConfig.bankTransferInstructions,
+            instructions: storeSettings.bankTransferInstructions,
           },
         ];
-  }, []);
+  }, [storeSettings.bankTransferInstructions, storeSettings.cashOnDeliveryInstructions]);
   const selectedPayment = paymentOptions.find((option) => option.method === payment) ?? paymentOptions[0];
 
   useEffect(() => {
@@ -174,10 +176,10 @@ export function CheckoutPage() {
                   <strong>{shippingCost === 0 ? 'Envío gratis aplicado' : `Envío: $${shippingCost.toFixed(2)}`}</strong>
                   <small>
                     {shippingCost === 0
-                      ? `Tu compra supera el mínimo de $${storeConfig.freeShippingThreshold.toFixed(2)}.`
+                      ? `Tu compra supera el mínimo de $${storeSettings.freeShippingThreshold.toFixed(2)}.`
                       : `Agrega $${remainingForFreeShipping.toFixed(2)} para envío gratis.`}
                   </small>
-                  <small>{storeConfig.shippingCoverageNote}</small>
+                  <small>{storeSettings.shippingCoverageNote}</small>
                 </span>
               </div>
             </section>
@@ -205,7 +207,7 @@ export function CheckoutPage() {
               </div>
               {selectedPayment && (
                 <div className="payment-instructions">
-                  <strong>{selectedPayment.method === 'Transferencia' ? storeConfig.bankAccountLabel : selectedPayment.method}</strong>
+                  <strong>{selectedPayment.method === 'Transferencia' ? storeSettings.bankAccountLabel : selectedPayment.method}</strong>
                   <p>{selectedPayment.instructions}</p>
                 </div>
               )}

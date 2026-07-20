@@ -5,7 +5,7 @@ import { loginAccount, logoutAccount, registerAccount, restoreSession } from '..
 import { fetchStorefrontCatalog } from '../services/catalogService';
 import { calculateOrder, createServerOrder } from '../services/orderService';
 import { isApiUnavailable } from '../services/demoMode';
-import { storeConfig } from '../config/storeConfig';
+import { loadStoreSettings, resetStoreSettings, saveStoreSettings, storeConfig, type StoreSettings } from '../config/storeConfig';
 
 const now = () => new Date().toISOString();
 const round = (value: number) => Number(value.toFixed(2));
@@ -37,6 +37,7 @@ interface StoreValue {
   authReady: boolean;
   cart: CartItem[];
   orders: Order[];
+  storeSettings: StoreSettings;
   cartCount: number;
   cartSubtotal: number;
   register: (name: string, email: string, password: string) => Promise<Result>;
@@ -55,6 +56,8 @@ interface StoreValue {
   deleteCategory: (id: string) => Result;
   updateOrderStatus: (id: string, status: OrderStatus) => Result;
   toggleUser: (id: string) => Result;
+  updateStoreSettings: (settings: StoreSettings) => Result;
+  restoreDefaultStoreSettings: () => Result;
 }
 
 const Context = createContext<StoreValue | undefined>(undefined);
@@ -82,6 +85,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [authReady, setAuthReady] = useState(false);
   const [cart, setCart] = useState<CartItem[]>(() => readStorage(cartKey(), readStorage(KEYS.legacyCart, [])));
   const [orders, setOrders] = useState<Order[]>(() => readStorage(KEYS.orders, []));
+  const [storeSettings, setStoreSettings] = useState<StoreSettings>(() => loadStoreSettings());
 
   useEffect(() => writeStorage(KEYS.users, users), [users]);
   useEffect(() => writeStorage(KEYS.orders, orders), [orders]);
@@ -310,6 +314,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return { ok: true, message: 'Estado de cuenta actualizado.' };
   };
 
+  const updateStoreSettings = (settings: StoreSettings): Result => {
+    setStoreSettings(saveStoreSettings(settings));
+    return { ok: true, message: 'Configuración de tienda actualizada.' };
+  };
+
+  const restoreDefaultStoreSettings = (): Result => {
+    setStoreSettings(resetStoreSettings());
+    return { ok: true, message: 'Configuración original restaurada.' };
+  };
+
   const cartSubtotal = round(cart.reduce((sum, item) => sum + (products.find((product) => product.id === item.productId)?.price ?? 0) * item.quantity, 0));
 
   const value = useMemo(
@@ -323,6 +337,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       authReady,
       cart,
       orders,
+      storeSettings,
       cartCount: cart.reduce((sum, item) => sum + item.quantity, 0),
       cartSubtotal,
       register,
@@ -341,8 +356,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       deleteCategory,
       updateOrderStatus,
       toggleUser,
+      updateStoreSettings,
+      restoreDefaultStoreSettings,
     }),
-    [products, users, categories, catalogLoading, catalogError, currentUser, authReady, cart, orders, cartSubtotal],
+    [products, users, categories, catalogLoading, catalogError, currentUser, authReady, cart, orders, storeSettings, cartSubtotal],
   );
 
   return <Context.Provider value={value}>{children}</Context.Provider>;

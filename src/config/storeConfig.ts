@@ -1,3 +1,5 @@
+import { KEYS } from '../utils/storage';
+
 const env = import.meta.env;
 
 const value = (key: string, fallback: string) => {
@@ -50,3 +52,114 @@ export const storeConfig = {
   demoAdminEmail: value('VITE_DEMO_ADMIN_EMAIL', 'admin@tienda.com').toLowerCase(),
   enableDemoFallback: booleanValue('VITE_ENABLE_DEMO_FALLBACK', true),
 };
+
+export type StoreSettings = Pick<
+  typeof storeConfig,
+  | 'name'
+  | 'legalName'
+  | 'shortName'
+  | 'logoLetter'
+  | 'announcement'
+  | 'tagline'
+  | 'supportEmail'
+  | 'supportPhone'
+  | 'location'
+  | 'businessHours'
+  | 'footerNote'
+  | 'defaultCheckoutCity'
+  | 'shippingFlatRate'
+  | 'freeShippingThreshold'
+  | 'shippingCoverageNote'
+  | 'bankAccountLabel'
+  | 'bankTransferInstructions'
+  | 'cashOnDeliveryInstructions'
+>;
+
+export const defaultStoreSettings: StoreSettings = {
+  name: storeConfig.name,
+  legalName: storeConfig.legalName,
+  shortName: storeConfig.shortName,
+  logoLetter: storeConfig.logoLetter,
+  announcement: storeConfig.announcement,
+  tagline: storeConfig.tagline,
+  supportEmail: storeConfig.supportEmail,
+  supportPhone: storeConfig.supportPhone,
+  location: storeConfig.location,
+  businessHours: storeConfig.businessHours,
+  footerNote: storeConfig.footerNote,
+  defaultCheckoutCity: storeConfig.defaultCheckoutCity,
+  shippingFlatRate: storeConfig.shippingFlatRate,
+  freeShippingThreshold: storeConfig.freeShippingThreshold,
+  shippingCoverageNote: storeConfig.shippingCoverageNote,
+  bankAccountLabel: storeConfig.bankAccountLabel,
+  bankTransferInstructions: storeConfig.bankTransferInstructions,
+  cashOnDeliveryInstructions: storeConfig.cashOnDeliveryInstructions,
+};
+
+export function getStoreSettings(): StoreSettings {
+  return pickStoreSettings(storeConfig);
+}
+
+export function loadStoreSettings(): StoreSettings {
+  try {
+    const raw = localStorage.getItem(KEYS.settings);
+    if (!raw) return getStoreSettings();
+    const parsed = JSON.parse(raw) as { data?: Partial<StoreSettings> } | Partial<StoreSettings>;
+    const data = parsed && typeof parsed === 'object' && 'data' in parsed && parsed.data ? parsed.data : (parsed as Partial<StoreSettings>);
+    return normalizeStoreSettings(data);
+  } catch {
+    localStorage.removeItem(KEYS.settings);
+    return getStoreSettings();
+  }
+}
+
+export function saveStoreSettings(settings: StoreSettings) {
+  const normalized = normalizeStoreSettings(settings);
+  Object.assign(storeConfig, normalized);
+  localStorage.setItem(KEYS.settings, JSON.stringify({ version: 1, data: normalized }));
+  return normalized;
+}
+
+export function resetStoreSettings() {
+  Object.assign(storeConfig, defaultStoreSettings);
+  localStorage.removeItem(KEYS.settings);
+  return defaultStoreSettings;
+}
+
+function normalizeStoreSettings(settings: Partial<StoreSettings>): StoreSettings {
+  return {
+    name: text(settings.name, defaultStoreSettings.name),
+    legalName: text(settings.legalName, settings.name || defaultStoreSettings.legalName),
+    shortName: text(settings.shortName, defaultStoreSettings.shortName).slice(0, 16),
+    logoLetter: text(settings.logoLetter, defaultStoreSettings.logoLetter).slice(0, 2).toUpperCase(),
+    announcement: text(settings.announcement, defaultStoreSettings.announcement),
+    tagline: text(settings.tagline, defaultStoreSettings.tagline),
+    supportEmail: text(settings.supportEmail, defaultStoreSettings.supportEmail).toLowerCase(),
+    supportPhone: text(settings.supportPhone, defaultStoreSettings.supportPhone),
+    location: text(settings.location, defaultStoreSettings.location),
+    businessHours: text(settings.businessHours, defaultStoreSettings.businessHours),
+    footerNote: text(settings.footerNote, defaultStoreSettings.footerNote),
+    defaultCheckoutCity: text(settings.defaultCheckoutCity, defaultStoreSettings.defaultCheckoutCity),
+    shippingFlatRate: money(settings.shippingFlatRate, defaultStoreSettings.shippingFlatRate),
+    freeShippingThreshold: money(settings.freeShippingThreshold, defaultStoreSettings.freeShippingThreshold),
+    shippingCoverageNote: text(settings.shippingCoverageNote, defaultStoreSettings.shippingCoverageNote),
+    bankAccountLabel: text(settings.bankAccountLabel, defaultStoreSettings.bankAccountLabel),
+    bankTransferInstructions: text(settings.bankTransferInstructions, defaultStoreSettings.bankTransferInstructions),
+    cashOnDeliveryInstructions: text(settings.cashOnDeliveryInstructions, defaultStoreSettings.cashOnDeliveryInstructions),
+  };
+}
+
+function pickStoreSettings(config: typeof storeConfig): StoreSettings {
+  return normalizeStoreSettings(config);
+}
+
+function text(value: unknown, fallback: string) {
+  return typeof value === 'string' && value.trim() ? value.trim() : fallback;
+}
+
+function money(value: unknown, fallback: number) {
+  const amount = Number(value);
+  return Number.isFinite(amount) && amount >= 0 ? Number(amount.toFixed(2)) : fallback;
+}
+
+Object.assign(storeConfig, loadStoreSettings());
