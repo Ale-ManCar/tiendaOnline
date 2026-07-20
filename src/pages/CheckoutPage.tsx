@@ -1,6 +1,7 @@
 import { CheckCircle2, ChevronLeft, CreditCard, LockKeyhole, PackageCheck, Truck } from 'lucide-react';
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, Navigate, useNavigate, useOutletContext } from 'react-router-dom';
+import { ProductImage } from '../components/ProductImage';
 import type { ToastState } from '../components/Toast';
 import { useStore } from '../context/StoreContext';
 import type { PaymentMethod, ShippingData } from '../types';
@@ -233,7 +234,7 @@ export function CheckoutPage() {
                 const product = products.find((candidate) => candidate.id === item.productId);
                 return product ? (
                   <div key={item.productId}>
-                    <img src={product.image} alt={product.name} />
+                    <ProductImage src={product.image} alt={product.name} />
                     <span>
                       <strong>{product.name}</strong>
                       <small>Cantidad: {item.quantity}</small>

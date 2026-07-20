@@ -1,5 +1,6 @@
-import { useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import { Navigate } from 'react-router-dom';
+import { ProductImage } from '../components/ProductImage';
 import { useStore } from '../context/StoreContext';
 import type { Category, Order, OrderStatus, Product } from '../types';
 import type { StoreSettings } from '../config/storeConfig';
@@ -27,6 +28,8 @@ export function AdminPage() {
   const [creatingCategory, setCreatingCategory] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [adminMessage, setAdminMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [orderSearch, setOrderSearch] = useState('');
+  const [orderStatusFilter, setOrderStatusFilter] = useState<'Todos' | OrderStatus>('Todos');
 
   if (store.currentUser?.role !== 'admin') return <Navigate to="/" replace />;
 
@@ -35,6 +38,32 @@ export function AdminPage() {
   const outOfStockProducts = activeProducts.filter((product) => product.stock === 0);
   const visibleProducts = showLowStockOnly ? store.products.filter((product) => product.active && product.stock <= LOW_STOCK_THRESHOLD) : store.products;
   const insights = getSalesInsights(store.orders);
+  const visibleOrders = useMemo(() => {
+    const search = orderSearch.trim().toLowerCase();
+
+    return store.orders.filter((order) => {
+      const shipping = getOrderShipping(order);
+      const matchesStatus = orderStatusFilter === 'Todos' || order.status === orderStatusFilter;
+      const matchesSearch =
+        !search ||
+        [
+          order.id,
+          shipping.fullName,
+          shipping.email,
+          shipping.phone,
+          shipping.city,
+          shipping.address,
+          order.paymentMethod,
+          order.paymentReference ?? '',
+          order.status,
+        ]
+          .join(' ')
+          .toLowerCase()
+          .includes(search);
+
+      return matchesStatus && matchesSearch;
+    });
+  }, [orderSearch, orderStatusFilter, store.orders]);
 
   const closeProductForm = () => {
     setEditingProduct(null);
@@ -44,6 +73,22 @@ export function AdminPage() {
   const closeCategoryForm = () => {
     setEditingCategory(null);
     setCreatingCategory(false);
+  };
+
+  const exportOrderReport = () => {
+    if (!visibleOrders.length) {
+      setAdminMessage({ type: 'error', text: 'No hay pedidos para exportar con los filtros actuales.' });
+      return;
+    }
+
+    downloadHtmlFile(
+      `reporte-pedidos-${new Date().toISOString().slice(0, 10)}.html`,
+      buildOrderReportHtml(visibleOrders, store.storeSettings, {
+        search: orderSearch,
+        status: orderStatusFilter,
+      }),
+    );
+    setAdminMessage({ type: 'success', text: 'Reporte de pedidos exportado.' });
   };
 
   return (
@@ -156,7 +201,7 @@ export function AdminPage() {
                       <tr key={product.id}>
                         <td>
                           <div className="table-product">
-                            <img src={product.image} alt="" />
+                            <ProductImage src={product.image} alt={product.name} />
                             <span>
                               <strong>{product.name}</strong>
                               {product.featured && <small>Destacado</small>}
@@ -237,7 +282,41 @@ export function AdminPage() {
             )}
 
             {tab === 'orders' && (
-              <table>
+              <>
+                <div className="admin-toolbar">
+                  <div>
+                    <h2>Pedidos</h2>
+                    <p>Busca, filtra y exporta reportes listos para revisar o imprimir.</p>
+                  </div>
+                  <div className="admin-toolbar-actions">
+                    <button className="button secondary" type="button" onClick={exportOrderReport}>
+                      Exportar reporte
+                    </button>
+                  </div>
+                </div>
+
+                <div className="admin-filters">
+                  <label>
+                    Buscar pedido
+                    <input
+                      value={orderSearch}
+                      onChange={(event) => setOrderSearch(event.target.value)}
+                      placeholder="Código, cliente, ciudad, pago..."
+                    />
+                  </label>
+                  <label>
+                    Estado
+                    <select value={orderStatusFilter} onChange={(event) => setOrderStatusFilter(event.target.value as 'Todos' | OrderStatus)}>
+                      <option>Todos</option>
+                      {(['Pendiente', 'Procesando', 'Enviado', 'Entregado'] as OrderStatus[]).map((status) => (
+                        <option key={status}>{status}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <span>{visibleOrders.length} de {store.orders.length} pedidos</span>
+                </div>
+
+                <table>
                 <thead>
                   <tr>
                     <th>Código</th>
@@ -250,7 +329,7 @@ export function AdminPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {store.orders.map((order) => {
+                  {visibleOrders.map((order) => {
                     const shipping = getOrderShipping(order);
 
                     return (
@@ -284,8 +363,16 @@ export function AdminPage() {
                       </tr>
                     );
                   })}
+                    {visibleOrders.length === 0 && (
+                      <tr>
+                        <td className="empty-table" colSpan={7}>
+                          No hay pedidos que coincidan con los filtros.
+                        </td>
+                      </tr>
+                    )}
                 </tbody>
-              </table>
+                </table>
+              </>
             )}
 
             {tab === 'users' && (
@@ -538,6 +625,127 @@ function getSalesInsights(orders: Order[]) {
   };
 }
 
+function downloadHtmlFile(filename: string, html: string) {
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function escapeHtml(value: unknown) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function buildOrderReportHtml(orders: Order[], settings: StoreSettings, filters: { search: string; status: 'Todos' | OrderStatus }) {
+  const revenue = orders.reduce((sum, order) => sum + getOrderTotal(order), 0);
+  const subtotal = orders.reduce((sum, order) => sum + (order.subtotal ?? 0), 0);
+  const tax = orders.reduce((sum, order) => sum + (order.tax ?? 0), 0);
+  const shipping = orders.reduce((sum, order) => sum + (order.shippingCost ?? 0), 0);
+  const generatedAt = new Date().toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' });
+  const filterText = [
+    filters.status !== 'Todos' ? `Estado: ${filters.status}` : 'Todos los estados',
+    filters.search.trim() ? `Búsqueda: ${filters.search.trim()}` : 'Sin búsqueda',
+  ].join(' · ');
+
+  const rows = orders
+    .map((order) => {
+      const orderShipping = getOrderShipping(order);
+
+      return `
+        <tr>
+          <td><strong>${escapeHtml(order.id)}</strong><small>${escapeHtml(formatDate(order.createdAt))}</small></td>
+          <td>${escapeHtml(orderShipping.fullName)}<small>${escapeHtml(orderShipping.email)}</small></td>
+          <td>${escapeHtml(orderShipping.city)}<small>${escapeHtml(orderShipping.address)}</small></td>
+          <td>${escapeHtml(order.paymentMethod)}<small>${escapeHtml(order.paymentReference || 'Sin referencia')}</small></td>
+          <td><span class="status">${escapeHtml(order.status)}</span></td>
+          <td class="money">${escapeHtml(formatMoney(order.subtotal))}</td>
+          <td class="money">${escapeHtml(formatMoney(order.tax))}</td>
+          <td class="money">${escapeHtml(formatShippingCost(order.shippingCost))}</td>
+          <td class="money total">${escapeHtml(formatMoney(getOrderTotal(order)))}</td>
+        </tr>
+      `;
+    })
+    .join('');
+
+  return `<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reporte de pedidos - ${escapeHtml(settings.name)}</title>
+  <style>
+    :root { color: #17191f; background: #f4f4f1; font-family: Arial, Helvetica, sans-serif; }
+    body { margin: 0; padding: 34px; }
+    main { max-width: 1180px; margin: 0 auto; background: #fff; border: 1px solid #dedbd4; border-radius: 28px; overflow: hidden; box-shadow: 0 24px 80px rgba(20,20,18,.08); }
+    header { display: flex; justify-content: space-between; gap: 28px; padding: 34px; background: #17191f; color: #fff; }
+    header span { display: inline-flex; align-items: center; justify-content: center; width: 46px; height: 46px; border-radius: 14px; background: #ff5a3d; font-size: 24px; font-weight: 900; margin-bottom: 18px; }
+    h1 { margin: 0 0 8px; font-size: 38px; letter-spacing: -.04em; }
+    p { margin: 0; color: #737780; line-height: 1.55; }
+    header p { color: #d7d7d7; }
+    .meta { text-align: right; min-width: 240px; }
+    .meta strong { display: block; margin-bottom: 8px; }
+    .summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; padding: 24px 34px; background: #fbfbf9; border-bottom: 1px solid #e4e1da; }
+    .summary article { padding: 18px; border: 1px solid #e4e1da; border-radius: 18px; background: #fff; }
+    .summary small { display: block; color: #737780; text-transform: uppercase; letter-spacing: .08em; font-size: 11px; font-weight: 800; margin-bottom: 8px; }
+    .summary strong { font-size: 24px; letter-spacing: -.03em; }
+    .table-wrap { padding: 26px 34px 34px; overflow-x: auto; }
+    table { width: 100%; min-width: 980px; border-collapse: collapse; }
+    th { text-align: left; color: #737780; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; padding: 12px 10px; border-bottom: 1px solid #e4e1da; }
+    td { padding: 16px 10px; border-bottom: 1px solid #eeeae4; vertical-align: top; }
+    td small { display: block; color: #737780; margin-top: 5px; font-size: 12px; }
+    .money { text-align: right; white-space: nowrap; }
+    .total { font-weight: 900; }
+    .status { display: inline-flex; padding: 7px 11px; border-radius: 999px; background: #fff1bd; color: #735200; font-size: 12px; font-weight: 800; }
+    footer { padding: 18px 34px 30px; color: #737780; font-size: 12px; }
+    @media print { body { padding: 0; background: #fff; } main { box-shadow: none; border: 0; border-radius: 0; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <span>${escapeHtml(settings.logoLetter)}</span>
+        <h1>Reporte de pedidos</h1>
+        <p>${escapeHtml(settings.name)} · ${escapeHtml(filterText)}</p>
+      </div>
+      <div class="meta">
+        <strong>Generado</strong>
+        <p>${escapeHtml(generatedAt)}</p>
+        <p>${escapeHtml(settings.supportEmail)}</p>
+      </div>
+    </header>
+    <section class="summary">
+      <article><small>Pedidos</small><strong>${orders.length}</strong></article>
+      <article><small>Subtotal</small><strong>${escapeHtml(formatMoney(subtotal))}</strong></article>
+      <article><small>IVA</small><strong>${escapeHtml(formatMoney(tax))}</strong></article>
+      <article><small>Total</small><strong>${escapeHtml(formatMoney(revenue))}</strong></article>
+    </section>
+    <section class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Pedido</th><th>Cliente</th><th>Entrega</th><th>Pago</th><th>Estado</th><th>Subtotal</th><th>IVA</th><th>Envío</th><th>Total</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </section>
+    <footer>
+      ${escapeHtml(settings.legalName)} · ${escapeHtml(settings.location)} · Envío acumulado: ${escapeHtml(formatMoney(shipping))}
+    </footer>
+  </main>
+</body>
+</html>`;
+}
+
 function StoreSettingsPanel({
   settings,
   onSubmit,
@@ -588,6 +796,16 @@ function StoreSettingsPanel({
             Guardar cambios
           </button>
         </div>
+      </div>
+
+      <div className="settings-preview">
+        <span>{settings.logoLetter}</span>
+        <div>
+          <small>Vista previa de marca</small>
+          <strong>{settings.shortName}</strong>
+          <p>{settings.tagline}</p>
+        </div>
+        <em>{settings.announcement}</em>
       </div>
 
       <div className="settings-grid">
@@ -723,7 +941,7 @@ function OrderDetailModal({
           <div className="admin-order-items">
             {(order.items ?? []).map((item) => (
               <div key={`${item.productId}-${item.name}`}>
-                <img src={item.image} alt={item.name} />
+                <ProductImage src={item.image} alt={item.name} />
                 <span>
                   <strong>{item.name}</strong>
                   <small>{item.quantity} × {formatMoney(item.price)}</small>

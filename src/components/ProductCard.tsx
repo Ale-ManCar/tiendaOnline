@@ -1,12 +1,13 @@
 import { ArrowRight, ShoppingBag } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import type { Product } from '../types';
+import { ProductImage } from './ProductImage';
 
 export function ProductCard({ product, onAdd }: { product: Product; onAdd: (id: string) => void }) {
   return (
     <article className="product-card">
       <Link to={`/producto/${product.id}`} className="product-image-wrap">
-        <img src={product.image} alt={product.name} loading="lazy" />
+        <ProductImage src={product.image} alt={product.name} />
         {product.featured && <span className="product-badge">Destacado</span>}
       </Link>
       <div className="product-card-body">

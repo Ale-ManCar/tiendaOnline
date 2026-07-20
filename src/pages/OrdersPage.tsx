@@ -1,7 +1,11 @@
 import { PackageOpen } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
+import { ProductImage } from '../components/ProductImage';
 import { useStore } from '../context/StoreContext';
 import { formatMoney, formatShippingCost, getOrderShipping } from '../utils/orderDisplay';
+import type { OrderStatus } from '../types';
+
+const statusSteps: OrderStatus[] = ['Pendiente', 'Procesando', 'Enviado', 'Entregado'];
 
 export function OrdersPage() {
   const { currentUser, orders } = useStore();
@@ -54,7 +58,7 @@ export function OrdersPage() {
                   <div className="order-products">
                     {order.items.map((item) => (
                       <div key={item.productId}>
-                        <img src={item.image} alt={item.name} />
+                        <ProductImage src={item.image} alt={item.name} />
                         <span>
                           <strong>{item.name}</strong>
                           <small>
@@ -64,6 +68,40 @@ export function OrdersPage() {
                       </div>
                     ))}
                   </div>
+
+                  <div className="customer-order-details">
+                    <article>
+                      <span>Entrega</span>
+                      <strong>{shipping.city}, {shipping.province}</strong>
+                      <p>{shipping.address}</p>
+                    </article>
+                    <article>
+                      <span>Pago</span>
+                      <strong>{order.paymentMethod}</strong>
+                      <p>{order.paymentReference ? `Referencia: ${order.paymentReference}` : 'Sin referencia registrada'}</p>
+                    </article>
+                    <article>
+                      <span>Resumen</span>
+                      <strong>{formatMoney(order.total)}</strong>
+                      <p>IVA {formatMoney(order.tax)} · Envío {formatShippingCost(order.shippingCost)}</p>
+                    </article>
+                  </div>
+
+                  <ol className="customer-status-timeline">
+                    {statusSteps.map((status) => {
+                      const activeIndex = statusSteps.indexOf(order.status);
+                      const stepIndex = statusSteps.indexOf(status);
+                      const historyEntry = order.statusHistory?.find((entry) => entry.status === status);
+
+                      return (
+                        <li key={status} className={stepIndex <= activeIndex ? 'complete' : ''}>
+                          <span>{stepIndex + 1}</span>
+                          <strong>{status}</strong>
+                          <small>{historyEntry ? new Date(historyEntry.date).toLocaleDateString('es-EC') : 'Pendiente'}</small>
+                        </li>
+                      );
+                    })}
+                  </ol>
 
                   <footer>
                     <div>

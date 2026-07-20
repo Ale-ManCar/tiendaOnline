@@ -1,6 +1,7 @@
 import { Minus, Plus, ShoppingCart, Trash2, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../context/StoreContext';
+import { ProductImage } from './ProductImage';
 
 export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { cart, products, cartSubtotal, updateCartQuantity, removeFromCart, clearCart } = useStore();
@@ -21,7 +22,7 @@ export function CartDrawer({ open, onClose }: { open: boolean; onClose: () => vo
                 if (!product) return null;
                 return (
                   <article className="cart-item" key={item.productId}>
-                    <img src={product.image} alt={product.name} />
+                    <ProductImage src={product.image} alt={product.name} />
                     <div className="cart-item-info"><h4>{product.name}</h4><span>${product.price.toFixed(2)}</span>
                       <div className="quantity-control">
                         <button onClick={() => updateCartQuantity(product.id, item.quantity - 1)}><Minus size={14} /></button>
