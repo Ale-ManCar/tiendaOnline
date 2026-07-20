@@ -23,6 +23,8 @@ export function formatMoney(value: unknown): string {
 }
 
 export function formatShippingCost(value: unknown): string {
+  if (value === undefined || value === null || value === '') return 'No registrado';
+
   const amount = safeMoney(value);
   return amount === 0 ? 'Gratis' : formatMoney(amount);
 }
