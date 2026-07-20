@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Navigate } from 'react-router-dom';
 import { ProductImage } from '../components/ProductImage';
 import { useStore } from '../context/StoreContext';
@@ -14,6 +14,7 @@ const tabs = {
   orders: 'Pedidos',
   users: 'Usuarios',
   settings: 'Configuración',
+  launch: 'Lanzamiento',
 } as const;
 
 const LOW_STOCK_THRESHOLD = 5;
@@ -30,13 +31,25 @@ export function AdminPage() {
   const [adminMessage, setAdminMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [orderSearch, setOrderSearch] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState<'Todos' | OrderStatus>('Todos');
+  const [productSearch, setProductSearch] = useState('');
+  const [productCategoryFilter, setProductCategoryFilter] = useState('Todas');
+  const backupInputRef = useRef<HTMLInputElement>(null);
 
   if (store.currentUser?.role !== 'admin') return <Navigate to="/" replace />;
 
   const activeProducts = store.products.filter((product) => product.active);
   const lowStockProducts = activeProducts.filter((product) => product.stock > 0 && product.stock <= LOW_STOCK_THRESHOLD);
   const outOfStockProducts = activeProducts.filter((product) => product.stock === 0);
-  const visibleProducts = showLowStockOnly ? store.products.filter((product) => product.active && product.stock <= LOW_STOCK_THRESHOLD) : store.products;
+  const visibleProducts = useMemo(() => {
+    const search = productSearch.trim().toLowerCase();
+
+    return store.products.filter((product) => {
+      const matchesLowStock = !showLowStockOnly || (product.active && product.stock <= LOW_STOCK_THRESHOLD);
+      const matchesCategory = productCategoryFilter === 'Todas' || product.category === productCategoryFilter || product.categoryId === productCategoryFilter;
+      const matchesSearch = !search || [product.name, product.sku, product.category, product.description].join(' ').toLowerCase().includes(search);
+      return matchesLowStock && matchesCategory && matchesSearch;
+    });
+  }, [productCategoryFilter, productSearch, showLowStockOnly, store.products]);
   const insights = getSalesInsights(store.orders);
   const visibleOrders = useMemo(() => {
     const search = orderSearch.trim().toLowerCase();
@@ -89,6 +102,27 @@ export function AdminPage() {
       }),
     );
     setAdminMessage({ type: 'success', text: 'Reporte de pedidos exportado.' });
+  };
+
+  const exportBackup = () => {
+    downloadJsonFile(`respaldo-${store.storeSettings.shortName.toLowerCase()}-${new Date().toISOString().slice(0, 10)}.json`, store.exportStoreBackup());
+    setAdminMessage({ type: 'success', text: 'Respaldo completo descargado.' });
+  };
+
+  const restoreBackup = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!confirm('Esto reemplazará productos, categorías, usuarios, pedidos y configuración local. ¿Continuar?')) return;
+
+    try {
+      const backup = JSON.parse(await file.text());
+      const result = store.restoreStoreBackup(backup);
+      setAdminMessage({ type: result.ok ? 'success' : 'error', text: result.message });
+      if (result.ok) setTab('launch');
+    } catch {
+      setAdminMessage({ type: 'error', text: 'No se pudo leer el archivo de respaldo.' });
+    }
   };
 
   return (
@@ -175,6 +209,25 @@ export function AdminPage() {
                       Nuevo producto
                     </button>
                   </div>
+                </div>
+
+                <div className="admin-filters">
+                  <label>
+                    Buscar producto
+                    <input value={productSearch} onChange={(event) => setProductSearch(event.target.value)} placeholder="Nombre, SKU, categoría..." />
+                  </label>
+                  <label>
+                    Categoría
+                    <select value={productCategoryFilter} onChange={(event) => setProductCategoryFilter(event.target.value)}>
+                      <option>Todas</option>
+                      {store.categories.map((category) => (
+                        <option key={category.id} value={category.name}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <span>{visibleProducts.length} de {store.products.length} productos</span>
                 </div>
 
                 <table>
@@ -390,12 +443,12 @@ export function AdminPage() {
                 <tbody>
                   {store.users.map((user) => (
                     <tr key={user.id}>
-                      <td>{user.name}</td>
-                      <td>{user.email}</td>
-                      <td>{user.role}</td>
-                      <td>{new Date(user.createdAt).toLocaleDateString('es-EC')}</td>
-                      <td>{user.active ? 'Activo' : 'Inactivo'}</td>
-                      <td>
+                      <td data-label="Nombre">{user.name}</td>
+                      <td data-label="Correo">{user.email}</td>
+                      <td data-label="Rol">{user.role}</td>
+                      <td data-label="Registro">{new Date(user.createdAt).toLocaleDateString('es-EC')}</td>
+                      <td data-label="Estado">{user.active ? 'Activo' : 'Inactivo'}</td>
+                      <td data-label="Acción">
                         {user.id !== 'user-admin' && (
                           <button className="text-button" onClick={() => store.toggleUser(user.id)}>
                             {user.active ? 'Desactivar' : 'Activar'}
@@ -422,9 +475,26 @@ export function AdminPage() {
                 }}
               />
             )}
+
+            {tab === 'launch' && (
+              <LaunchReadinessPanel
+                settings={store.storeSettings}
+                stats={{
+                  products: store.products.length,
+                  activeProducts: activeProducts.length,
+                  categories: store.categories.length,
+                  orders: store.orders.length,
+                  users: store.users.length,
+                }}
+                onExportBackup={exportBackup}
+                onImportBackup={() => backupInputRef.current?.click()}
+              />
+            )}
           </div>
         </div>
       </div>
+
+      <input ref={backupInputRef} className="visually-hidden" type="file" accept="application/json,.json" onChange={restoreBackup} />
 
       {(creatingProduct || editingProduct) && (
         <ProductFormModal
@@ -636,6 +706,16 @@ function downloadHtmlFile(filename: string, html: string) {
   URL.revokeObjectURL(url);
 }
 
+function downloadJsonFile(filename: string, data: unknown) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
 function escapeHtml(value: unknown) {
   return String(value ?? '')
     .replace(/&/g, '&amp;')
@@ -745,6 +825,99 @@ function buildOrderReportHtml(orders: Order[], settings: StoreSettings, filters:
   </main>
 </body>
 </html>`;
+}
+
+function LaunchReadinessPanel({
+  settings,
+  stats,
+  onExportBackup,
+  onImportBackup,
+}: {
+  settings: StoreSettings;
+  stats: { products: number; activeProducts: number; categories: number; orders: number; users: number };
+  onExportBackup: () => void;
+  onImportBackup: () => void;
+}) {
+  const checklist = [
+    { title: 'Identidad de tienda', done: Boolean(settings.name && settings.shortName && settings.logoLetter), detail: 'Nombre, logo simple y frase de marca configurados.' },
+    { title: 'Contacto y WhatsApp', done: Boolean(settings.supportEmail && settings.supportPhone), detail: 'Correo y teléfono listos para soporte y mensajes.' },
+    { title: 'Pagos', done: Boolean(settings.bankAccountLabel && settings.bankTransferInstructions), detail: 'Datos de transferencia e instrucciones visibles.' },
+    { title: 'Envíos', done: settings.shippingFlatRate >= 0 && settings.freeShippingThreshold >= 0, detail: 'Costo fijo, mínimo gratis y cobertura configurados.' },
+    { title: 'Catálogo', done: stats.activeProducts > 0 && stats.categories > 0, detail: `${stats.activeProducts} productos activos en ${stats.categories} categorías.` },
+    { title: 'Respaldo', done: true, detail: 'Exporta un respaldo antes de entregar o modificar el sitio.' },
+  ];
+
+  return (
+    <section className="launch-panel">
+      <div className="admin-toolbar">
+        <div>
+          <h2>Puesta en marcha</h2>
+          <p>Checklist para entregar esta tienda a un cliente como instalación independiente, no como SaaS.</p>
+        </div>
+        <div className="admin-toolbar-actions">
+          <button className="button secondary" type="button" onClick={onImportBackup}>
+            Restaurar respaldo
+          </button>
+          <button className="button primary" type="button" onClick={onExportBackup}>
+            Descargar respaldo
+          </button>
+        </div>
+      </div>
+
+      <div className="launch-summary">
+        <article>
+          <small>Productos activos</small>
+          <strong>{stats.activeProducts}</strong>
+          <span>{stats.products} productos totales</span>
+        </article>
+        <article>
+          <small>Pedidos</small>
+          <strong>{stats.orders}</strong>
+          <span>Exportables en reportes</span>
+        </article>
+        <article>
+          <small>Usuarios</small>
+          <strong>{stats.users}</strong>
+          <span>Incluye administrador</span>
+        </article>
+      </div>
+
+      <div className="launch-grid">
+        <article className="launch-card">
+          <h3>Checklist de entrega</h3>
+          <div className="launch-checklist">
+            {checklist.map((item) => (
+              <div className={item.done ? 'done' : ''} key={item.title}>
+                <span>{item.done ? '✓' : '!'}</span>
+                <div>
+                  <strong>{item.title}</strong>
+                  <p>{item.detail}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className="launch-card">
+          <h3>Modo de venta por cliente</h3>
+          <ol>
+            <li>Duplicar el repositorio o crear una copia para el cliente.</li>
+            <li>Configurar marca, contacto, pagos, envío, productos y categorías.</li>
+            <li>Hacer una compra de prueba y verificar WhatsApp, historial y reportes.</li>
+            <li>Descargar un respaldo JSON y guardarlo con los archivos del cliente.</li>
+            <li>Publicar la copia final en GitHub Pages o en el hosting elegido.</li>
+          </ol>
+        </article>
+
+        <article className="launch-card warning">
+          <h3>Límite importante</h3>
+          <p>
+            Esta versión está preparada para venderse como instalación independiente por cliente. En GitHub Pages, los datos del panel se guardan en el navegador y deben respaldarse. Para operación multi-dispositivo con base de datos central, cada cliente necesita su propio backend o servicio administrado.
+          </p>
+        </article>
+      </div>
+    </section>
+  );
 }
 
 function StoreSettingsPanel({

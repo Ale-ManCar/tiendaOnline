@@ -58,9 +58,21 @@ interface StoreValue {
   toggleUser: (id: string) => Result;
   updateStoreSettings: (settings: StoreSettings) => Result;
   restoreDefaultStoreSettings: () => Result;
+  exportStoreBackup: () => StoreBackup;
+  restoreStoreBackup: (backup: unknown) => Result;
 }
 
 const Context = createContext<StoreValue | undefined>(undefined);
+
+export type StoreBackup = {
+  version: 1;
+  exportedAt: string;
+  products: Product[];
+  categories: Category[];
+  users: User[];
+  orders: Order[];
+  settings: StoreSettings;
+};
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState<Product[]>([]);
@@ -89,6 +101,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => writeStorage(KEYS.users, users), [users]);
   useEffect(() => writeStorage(KEYS.orders, orders), [orders]);
+  useEffect(() => {
+    if (!catalogLoading) writeStorage(KEYS.products, products);
+  }, [catalogLoading, products]);
+  useEffect(() => {
+    if (!catalogLoading) writeStorage(KEYS.categories, categories);
+  }, [catalogLoading, categories]);
   useEffect(() => writeStorage(cartKey(currentUser?.id), cart), [cart, currentUser]);
 
   useEffect(() => {
@@ -96,8 +114,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     fetchStorefrontCatalog()
       .then((data) => {
         if (!active) return;
-        setProducts(data.products);
-        setCategories(data.categories);
+        const storedProducts = readStorage<Product[]>(KEYS.products, []);
+        const storedCategories = readStorage<Category[]>(KEYS.categories, []);
+        setProducts(storedProducts.length ? storedProducts : data.products);
+        setCategories(storedCategories.length ? storedCategories : data.categories);
         setCatalogError(null);
       })
       .catch((error) => {
@@ -324,6 +344,33 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return { ok: true, message: 'Configuración original restaurada.' };
   };
 
+  const exportStoreBackup = (): StoreBackup => ({
+    version: 1,
+    exportedAt: now(),
+    products,
+    categories,
+    users,
+    orders,
+    settings: storeSettings,
+  });
+
+  const restoreStoreBackup = (backup: unknown): Result => {
+    if (!backup || typeof backup !== 'object') return { ok: false, message: 'Archivo de respaldo inválido.' };
+    const candidate = backup as Partial<StoreBackup>;
+    if (!Array.isArray(candidate.products) || !Array.isArray(candidate.categories) || !Array.isArray(candidate.users) || !Array.isArray(candidate.orders) || !candidate.settings) {
+      return { ok: false, message: 'El respaldo no tiene la estructura esperada.' };
+    }
+
+    const nextUsers = candidate.users.some((user) => user.email === admin.email) ? candidate.users : [admin, ...candidate.users];
+    setProducts(candidate.products);
+    setCategories(candidate.categories);
+    setUsers(nextUsers);
+    setOrders(candidate.orders);
+    setStoreSettings(saveStoreSettings(candidate.settings));
+    setCart([]);
+    return { ok: true, message: 'Respaldo restaurado correctamente.' };
+  };
+
   const cartSubtotal = round(cart.reduce((sum, item) => sum + (products.find((product) => product.id === item.productId)?.price ?? 0) * item.quantity, 0));
 
   const value = useMemo(
@@ -358,6 +405,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       toggleUser,
       updateStoreSettings,
       restoreDefaultStoreSettings,
+      exportStoreBackup,
+      restoreStoreBackup,
     }),
     [products, users, categories, catalogLoading, catalogError, currentUser, authReady, cart, orders, storeSettings, cartSubtotal],
   );
