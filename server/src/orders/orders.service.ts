@@ -2,7 +2,9 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  NotFoundException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
   OrderStatus,
   PaymentStatus,
@@ -14,10 +16,46 @@ import type { AuthenticatedUser } from '../auth/auth.types';
 import { CreateOrderDto } from './dto/create-order.dto';
 
 const TAX_RATE = 0.15;
+const orderInclude = { items: true, payments: true, statusHistory: true };
 
 @Injectable()
 export class OrdersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly config: ConfigService,
+  ) {}
+
+  findForUser(userId: string) {
+    return this.prisma.order.findMany({
+      where: { userId },
+      include: orderInclude,
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  findAll() {
+    return this.prisma.order.findMany({
+      include: orderInclude,
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async updateStatus(idOrCode: string, status: OrderStatus) {
+    const order = await this.prisma.order.findFirst({
+      where: this.orderIdentityWhere(idOrCode),
+      select: { id: true },
+    });
+    if (!order) throw new NotFoundException('Order not found.');
+
+    return this.prisma.order.update({
+      where: { id: order.id },
+      data: {
+        status,
+        statusHistory: { create: { status } },
+      },
+      include: orderInclude,
+    });
+  }
 
   async create(user: AuthenticatedUser, dto: CreateOrderDto) {
     const requestedItems = mergeDuplicateItems(dto.items);
@@ -50,7 +88,7 @@ export class OrdersService {
         quantity: item.quantity,
       };
     });
-    const totals = calculateOrderTotals(pricedItems);
+    const totals = this.calculateOrderTotals(pricedItems);
     const code = createOrderCode();
 
     const shippingAddress = {
@@ -114,9 +152,37 @@ export class OrdersService {
                   },
                 },
         },
-        include: { items: true, payments: true, statusHistory: true },
+        include: orderInclude,
       });
     });
+  }
+
+  private calculateOrderTotals(items: Pick<PricedItem, 'unitPrice' | 'quantity'>[]) {
+    const subtotal = roundMoney(
+      items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0),
+    );
+    const tax = roundMoney(subtotal * TAX_RATE);
+    const shippingTotal = calculateShippingTotal(
+      subtotal,
+      numberConfig(this.config, 'SHIPPING_FLAT_RATE', 5),
+      numberConfig(this.config, 'FREE_SHIPPING_THRESHOLD', 100),
+    );
+    const discountTotal = 0;
+    return {
+      subtotal,
+      tax,
+      shippingTotal,
+      discountTotal,
+      total: roundMoney(subtotal + tax + shippingTotal - discountTotal),
+    };
+  }
+
+  private orderIdentityWhere(idOrCode: string) {
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        idOrCode,
+      );
+    return isUuid ? { OR: [{ id: idOrCode }, { code: idOrCode }] } : { code: idOrCode };
   }
 }
 
@@ -143,7 +209,7 @@ export function calculateOrderTotals(items: Pick<PricedItem, 'unitPrice' | 'quan
     items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0),
   );
   const tax = roundMoney(subtotal * TAX_RATE);
-  const shippingTotal = 0;
+  const shippingTotal = calculateShippingTotal(subtotal, 5, 100);
   const discountTotal = 0;
   return {
     subtotal,
@@ -156,6 +222,16 @@ export function calculateOrderTotals(items: Pick<PricedItem, 'unitPrice' | 'quan
 
 function roundMoney(value: number) {
   return Number(value.toFixed(2));
+}
+
+function calculateShippingTotal(subtotal: number, flatRate: number, freeThreshold: number) {
+  if (freeThreshold > 0 && subtotal >= freeThreshold) return 0;
+  return roundMoney(Math.max(0, flatRate));
+}
+
+function numberConfig(config: ConfigService, key: string, fallback: number) {
+  const candidate = Number(config.get<string | number>(key, fallback));
+  return Number.isFinite(candidate) ? candidate : fallback;
 }
 
 function createOrderCode() {

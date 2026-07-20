@@ -3,7 +3,7 @@ import type { CartItem, Category, Order, OrderStatus, PaymentMethod, Product, Re
 import { cartKey, KEYS, readStorage, uid, writeStorage } from '../utils/storage';
 import { loginAccount, logoutAccount, registerAccount, restoreSession } from '../services/authService';
 import { fetchStorefrontCatalog } from '../services/catalogService';
-import { calculateOrder, createServerOrder } from '../services/orderService';
+import { calculateOrder, createServerOrder, fetchServerOrders, updateServerOrderStatus } from '../services/orderService';
 import { isApiUnavailable } from '../services/demoMode';
 import { loadStoreSettings, resetStoreSettings, saveStoreSettings, storeConfig, type StoreSettings } from '../config/storeConfig';
 
@@ -54,7 +54,7 @@ interface StoreValue {
   addCategory: (category: Omit<Category, 'id' | 'createdAt' | 'slug'>) => Result;
   updateCategory: (category: Category) => Result;
   deleteCategory: (id: string) => Result;
-  updateOrderStatus: (id: string, status: OrderStatus) => Result;
+  updateOrderStatus: (id: string, status: OrderStatus) => Promise<Result>;
   toggleUser: (id: string) => Result;
   updateStoreSettings: (settings: StoreSettings) => Result;
   restoreDefaultStoreSettings: () => Result;
@@ -166,6 +166,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         .filter((item) => item.quantity > 0),
     );
   }, [products]);
+
+  useEffect(() => {
+    if (!authReady || !currentUser || products.length === 0) return;
+
+    let active = true;
+    fetchServerOrders(currentUser, products)
+      .then((serverOrders) => {
+        if (active) setOrders(serverOrders);
+      })
+      .catch((error) => {
+        if (!storeConfig.enableDemoFallback || !isApiUnavailable(error)) {
+          console.warn('Could not load persisted orders from the backend.', error);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [authReady, currentUser?.id, currentUser?.role, products]);
 
   const register = async (name: string, email: string, password: string): Promise<Result> => {
     try {
@@ -319,13 +338,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return { ok: true, message: 'Categoría eliminada.' };
   };
 
-  const updateOrderStatus = (id: string, status: OrderStatus): Result => {
+  const updateOrderStatus = async (id: string, status: OrderStatus): Promise<Result> => {
+    const previousOrders = orders;
+    const optimisticDate = now();
     setOrders((currentOrders) =>
       currentOrders.map((order) =>
-        order.id === id ? { ...order, status, statusHistory: [...(order.statusHistory ?? []), { status, date: now() }] } : order,
+        order.id === id ? { ...order, status, statusHistory: [...(order.statusHistory ?? []), { status, date: optimisticDate }] } : order,
       ),
     );
-    return { ok: true, message: 'Estado actualizado.' };
+
+    try {
+      if (!currentUser) throw Error('Debes iniciar sesión.');
+      const serverOrder = await updateServerOrderStatus(id, status, currentUser, products);
+      setOrders((currentOrders) => currentOrders.map((order) => (order.id === id ? serverOrder : order)));
+      return { ok: true, message: 'Estado actualizado en el backend.' };
+    } catch (error) {
+      if (storeConfig.enableDemoFallback && isApiUnavailable(error)) return { ok: true, message: 'Estado actualizado localmente.' };
+      setOrders(previousOrders);
+      return { ok: false, message: error instanceof Error ? error.message : 'No se pudo actualizar el estado.' };
+    }
   };
 
   const toggleUser = (id: string): Result => {

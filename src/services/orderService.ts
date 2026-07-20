@@ -41,8 +41,10 @@ type ApiOrder = {
   subtotal: string | number;
   tax: string | number;
   shippingCost?: string | number;
+  shippingTotal?: string | number;
   total: string | number;
   paymentMethod?: ApiPaymentMethod;
+  payments?: { method: ApiPaymentMethod; providerReference?: string | null }[];
   shippingAddress: ApiShippingAddress;
   status: ApiOrderStatus;
   statusHistory: { status: ApiOrderStatus; createdAt: string }[];
@@ -51,6 +53,8 @@ type ApiOrder = {
 
 const paymentToApi = (method: PaymentMethod): ApiPaymentMethod => (method === 'Tarjeta' ? 'CARD' : method === 'Transferencia' ? 'BANK_TRANSFER' : 'CASH_ON_DELIVERY');
 const paymentFromApi = (method?: ApiPaymentMethod): PaymentMethod => (method === 'CARD' ? 'Tarjeta' : method === 'BANK_TRANSFER' ? 'Transferencia' : 'Contra entrega');
+const statusToApi = (status: Order['status']): ApiOrderStatus =>
+  status === 'Entregado' ? 'DELIVERED' : status === 'Enviado' ? 'SHIPPED' : status === 'Procesando' ? 'PREPARING' : 'PENDING_PAYMENT';
 const statusFromApi = (status: ApiOrderStatus) =>
   status === 'SHIPPED' || status === 'READY_TO_SHIP'
     ? 'Enviado'
@@ -96,7 +100,21 @@ export async function createServerOrder(
   return mapApiOrder(order, user, products, paymentMethod, paymentReference);
 }
 
-function mapApiOrder(order: ApiOrder, user: User, products: Product[], fallbackPayment: PaymentMethod, paymentReference?: string): Order {
+export async function fetchServerOrders(user: User, products: Product[]) {
+  const path = user.role === 'admin' ? '/orders/admin' : '/orders';
+  const orders = await apiRequest<ApiOrder[]>(path);
+  return orders.map((order) => mapApiOrder(order, user, products));
+}
+
+export async function updateServerOrderStatus(orderId: string, status: Order['status'], user: User, products: Product[]) {
+  const order = await apiRequest<ApiOrder>(`/orders/${encodeURIComponent(orderId)}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status: statusToApi(status) }),
+  });
+  return mapApiOrder(order, user, products);
+}
+
+function mapApiOrder(order: ApiOrder, user: User, products: Product[], fallbackPayment: PaymentMethod = 'Contra entrega', paymentReference?: string): Order {
   const items = order.items.map((item) => {
     const product = products.find((candidate) => candidate.id === item.productId);
     return {
@@ -110,7 +128,8 @@ function mapApiOrder(order: ApiOrder, user: User, products: Product[], fallbackP
   const calculated = calculateOrder(items);
   const subtotal = Number(order.subtotal);
   const tax = Number(order.tax);
-  const shippingCost = order.shippingCost === undefined ? calculated.shippingCost : Number(order.shippingCost);
+  const shippingCost = order.shippingCost === undefined && order.shippingTotal === undefined ? calculated.shippingCost : Number(order.shippingCost ?? order.shippingTotal);
+  const paymentMethod = order.paymentMethod ?? order.payments?.[0]?.method;
 
   return {
     id: order.code ?? order.id,
@@ -123,7 +142,7 @@ function mapApiOrder(order: ApiOrder, user: User, products: Product[], fallbackP
     tax,
     shippingCost,
     total: Number(order.total),
-    paymentMethod: order.paymentMethod ? paymentFromApi(order.paymentMethod) : fallbackPayment,
+    paymentMethod: paymentMethod ? paymentFromApi(paymentMethod) : fallbackPayment,
     paymentReference,
     shipping: {
       fullName: order.shippingAddress.recipientName,

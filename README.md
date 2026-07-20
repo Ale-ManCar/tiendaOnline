@@ -14,10 +14,12 @@ The app uses `HashRouter` because GitHub Pages does not rewrite routes to `index
 
 ## Persistence
 
-The production catalog is served from PostgreSQL through the backend API. Demo fallback uses browser storage and seeded products; it is for previews only, not real sales. Docker is not part of the required runtime.
+For sold client deployments, PostgreSQL through the backend API is the source of truth for accounts, sessions, catalog reads, checkout orders, and order status changes. That is what lets a customer register or buy on mobile and later see the same account and orders on a PC.
+
+Demo fallback uses browser storage and seeded products; it is for previews only, not real sales. Docker is not part of the required runtime.
 
 ## Current Limitations
 
-Real payments, password recovery, server-side carts, inventory reservations, and production order transactions are not complete yet. Before real sales, the backend still needs payment adapters, webhook idempotency, operational audit logs, and production hosting outside GitHub Pages.
+Real payments, password recovery, server-side carts, inventory reservations, and full admin catalog mutations through the API are not complete yet. Before real sales, the backend still needs payment adapters, webhook idempotency, operational audit logs, and production hosting outside GitHub Pages.
 
 See [architecture](docs/architecture.md), [data model](docs/data-model.md), [testing](docs/testing.md), [deployment](docs/deployment.md), and [limitations](docs/limitations.md).

@@ -402,7 +402,13 @@ export function AdminPage() {
                           {order.paymentReference && <small className="block">Ref: {order.paymentReference}</small>}
                         </td>
                         <td data-label="Estado">
-                          <select value={order.status} onChange={(event) => store.updateOrderStatus(order.id, event.target.value as OrderStatus)}>
+                          <select
+                            value={order.status}
+                            onChange={async (event) => {
+                              const result = await store.updateOrderStatus(order.id, event.target.value as OrderStatus);
+                              setAdminMessage({ type: result.ok ? 'success' : 'error', text: result.message });
+                            }}
+                          >
                             {(['Pendiente', 'Procesando', 'Enviado', 'Entregado'] as OrderStatus[]).map((status) => (
                               <option key={status}>{status}</option>
                             ))}
@@ -543,17 +549,19 @@ export function AdminPage() {
           order={selectedOrder}
           settings={store.storeSettings}
           onClose={() => setSelectedOrder(null)}
-          onStatusChange={(status) => {
-            const result = store.updateOrderStatus(selectedOrder.id, status);
-            setSelectedOrder((currentOrder) =>
-              currentOrder
-                ? {
-                    ...currentOrder,
-                    status,
-                    statusHistory: [...(currentOrder.statusHistory ?? []), { status, date: new Date().toISOString() }],
-                  }
-                : currentOrder,
-            );
+          onStatusChange={async (status) => {
+            const result = await store.updateOrderStatus(selectedOrder.id, status);
+            if (result.ok) {
+              setSelectedOrder((currentOrder) =>
+                currentOrder
+                  ? {
+                      ...currentOrder,
+                      status,
+                      statusHistory: [...(currentOrder.statusHistory ?? []), { status, date: new Date().toISOString() }],
+                    }
+                  : currentOrder,
+              );
+            }
             setAdminMessage({ type: result.ok ? 'success' : 'error', text: result.message });
           }}
         />

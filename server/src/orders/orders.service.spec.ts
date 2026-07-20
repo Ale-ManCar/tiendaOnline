@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException } from '@nestjs/common';
+import type { ConfigService } from '@nestjs/config';
 import { OrderStatus, PaymentMethod, ProductStatus, UserRole } from '../generated/prisma/enums';
 import type { PrismaService } from '../database/prisma.service';
 import { calculateOrderTotals, mergeDuplicateItems, OrdersService } from './orders.service';
@@ -19,9 +20,12 @@ const prisma = {
     typeof callback === 'function' ? callback(prisma) : callback,
   ),
 };
+const config = {
+  get: jest.fn((key: string, fallback: unknown) => fallback),
+};
 
 describe('OrdersService', () => {
-  const service = new OrdersService(prisma as unknown as PrismaService);
+  const service = new OrdersService(prisma as unknown as PrismaService, config as unknown as ConfigService);
   const user = {
     id: '4e68d82e-91a1-406e-b9a5-7b8f1f81b27a',
     name: 'Jane Doe',
@@ -52,9 +56,9 @@ describe('OrdersService', () => {
     ).toEqual({
       subtotal: 24.5,
       tax: 3.67,
-      shippingTotal: 0,
+      shippingTotal: 5,
       discountTotal: 0,
-      total: 28.17,
+      total: 33.17,
     });
   });
 
@@ -102,7 +106,8 @@ describe('OrdersService', () => {
         data: expect.objectContaining({
           subtotal: 25,
           tax: 3.75,
-          total: 28.75,
+          shippingTotal: 5,
+          total: 33.75,
         }),
       }),
     );
