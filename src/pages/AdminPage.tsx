@@ -91,6 +91,48 @@ export function AdminPage() {
     setAdminMessage({ type: 'success', text: 'Reporte de pedidos exportado.' });
   };
 
+  const updateProductQuickly = (product: Product, changes: Partial<Product>, successMessage: string) => {
+    const result = store.updateProduct({ ...product, ...changes });
+    setAdminMessage({ type: result.ok ? 'success' : 'error', text: result.ok ? successMessage : result.message });
+  };
+
+  const restockProduct = (product: Product) => {
+    const amount = Number(prompt(`¿Cuántas unidades quieres agregar a "${product.name}"?`, '10'));
+    if (!Number.isInteger(amount) || amount <= 0) {
+      setAdminMessage({ type: 'error', text: 'Ingresa una cantidad entera mayor a cero.' });
+      return;
+    }
+
+    updateProductQuickly(product, { stock: product.stock + amount, active: true }, `Stock actualizado: ${product.name} ahora tiene ${product.stock + amount} unidades.`);
+  };
+
+  const duplicateProduct = (product: Product) => {
+    const baseSku = `${product.sku}-COPY`;
+    let nextSku = baseSku;
+    let counter = 2;
+
+    while (store.products.some((candidate) => candidate.sku.toLowerCase() === nextSku.toLowerCase())) {
+      nextSku = `${baseSku}-${counter}`;
+      counter += 1;
+    }
+
+    const result = store.addProduct({
+      name: `${product.name} copia`,
+      description: product.description,
+      category: product.category,
+      categoryId: product.categoryId,
+      defaultVariantId: product.defaultVariantId,
+      price: product.price,
+      stock: 0,
+      image: product.image,
+      featured: false,
+      sku: nextSku,
+      active: false,
+    });
+
+    setAdminMessage({ type: result.ok ? 'success' : 'error', text: result.ok ? `Producto duplicado como borrador con SKU ${nextSku}.` : result.message });
+  };
+
   return (
     <section className="admin-page">
       <div className="container">
@@ -223,6 +265,14 @@ export function AdminPage() {
                         <td data-label="Acción">
                           <div className="table-actions inline">
                             <button onClick={() => setEditingProduct(product)}>Editar</button>
+                            <button onClick={() => updateProductQuickly(product, { featured: !product.featured }, product.featured ? 'Producto quitado de destacados.' : 'Producto marcado como destacado.')}>
+                              {product.featured ? 'No destacar' : 'Destacar'}
+                            </button>
+                            <button onClick={() => updateProductQuickly(product, { active: !product.active }, product.active ? 'Producto ocultado del catálogo.' : 'Producto visible en el catálogo.')}>
+                              {product.active ? 'Ocultar' : 'Mostrar'}
+                            </button>
+                            <button onClick={() => restockProduct(product)}>Reponer</button>
+                            <button onClick={() => duplicateProduct(product)}>Duplicar</button>
                             <button className="danger" onClick={() => confirm('¿Eliminar producto?') && store.deleteProduct(product.id)}>
                               Eliminar
                             </button>

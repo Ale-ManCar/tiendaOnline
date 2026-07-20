@@ -382,6 +382,8 @@ td { padding: 13px 10px; border-bottom: 1px solid var(--line); font-size: 13px; 
 .table-actions button { width: 36px; height: 36px; border-radius: 9px; border: 1px solid var(--line); background: white; display: grid; place-items: center; }
 .table-actions .danger { color: var(--danger); }
 .table-actions.inline button { width: auto; min-height: 36px; padding: 0 10px; font-weight: 800; font-size: 12px; }
+.table-actions.inline { flex-wrap: wrap; min-width: 230px; }
+.table-actions.inline button:not(.danger):hover { border-color: #ffd1c6; background: #fff8f5; color: var(--accent-dark); }
 .low-stock { color: var(--danger); font-weight: 800; }
 .stock-badge { display: inline-flex; width: max-content; margin-top: 6px; border-radius: 999px; padding: 5px 8px; background: #fff0b9; color: #704d00; font-size: 11px; font-weight: 800; }
 .warning-text { color: #9a6814; }
