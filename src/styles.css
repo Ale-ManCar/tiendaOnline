@@ -335,6 +335,31 @@ td { padding: 13px 10px; border-bottom: 1px solid var(--line); font-size: 13px; 
 .admin-product-form { width: min(760px, 100%); }
 .admin-product-form .form-grid { margin-top: 22px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; flex-wrap: wrap; }
+.admin-order-modal { width: min(980px, 100%); }
+.admin-order-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding-right: 50px; margin-bottom: 22px; }
+.admin-order-head h2 { font-size: 34px; letter-spacing: -.04em; margin-bottom: 4px; }
+.admin-order-head p { color: var(--muted); margin: 0; }
+.admin-order-grid, .admin-order-bottom { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.admin-order-panel { border: 1px solid var(--line); background: #fbfbf9; border-radius: 17px; padding: 18px; }
+.admin-order-panel h3 { font-size: 17px; margin-bottom: 14px; }
+.admin-order-panel dl { display: grid; gap: 12px; margin: 0 0 16px; }
+.admin-order-panel dl div, .admin-order-totals span { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
+.admin-order-panel dt { color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
+.admin-order-panel dd { margin: 0; text-align: right; font-weight: 700; }
+.admin-status-control { display: flex; flex-direction: column; gap: 8px; color: #45474d; font-size: 13px; font-weight: 800; }
+.admin-status-control select { width: 100%; min-height: 46px; border: 1px solid var(--line); background: white; border-radius: 11px; padding: 0 13px; outline: 0; }
+.admin-order-items { display: grid; gap: 12px; }
+.admin-order-items > div { display: grid; grid-template-columns: 58px 1fr auto; gap: 12px; align-items: center; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.admin-order-items > div:last-child { padding-bottom: 0; border-bottom: 0; }
+.admin-order-items img { width: 58px; height: 66px; object-fit: cover; border-radius: 11px; background: var(--soft); }
+.admin-order-items span { display: flex; flex-direction: column; gap: 4px; }
+.admin-order-items small, .admin-status-timeline small { color: var(--muted); }
+.admin-order-totals { display: grid; gap: 11px; }
+.admin-order-totals .total { border-top: 1px solid var(--line); padding-top: 12px; margin-top: 4px; font-size: 18px; color: var(--ink); }
+.admin-status-timeline { display: grid; gap: 10px; margin: 0; padding-left: 20px; }
+.admin-status-timeline li::marker { color: var(--accent); }
+.admin-status-timeline li { padding-left: 4px; }
+.admin-status-timeline li strong, .admin-status-timeline li small { display: block; }
 
 .site-footer { background: #17181b; color: white; padding: 64px 0 20px; }
 .footer-grid { display: grid; grid-template-columns: 1.4fr .7fr 1fr 1fr; gap: 50px; }
@@ -453,6 +478,12 @@ td { padding: 13px 10px; border-bottom: 1px solid var(--line); font-size: 13px; 
   .legal-note { align-items: flex-start; }
   .admin-stats { grid-template-columns: 1fr; }
   .admin-toolbar { align-items: stretch; flex-direction: column; }
+  .admin-order-head, .admin-order-grid, .admin-order-bottom { grid-template-columns: 1fr; }
+  .admin-order-head { display: grid; padding-right: 42px; }
+  .admin-order-panel dl div, .admin-order-totals span { flex-direction: column; gap: 4px; }
+  .admin-order-panel dd { text-align: left; }
+  .admin-order-items > div { grid-template-columns: 52px 1fr; }
+  .admin-order-items b { grid-column: 2; }
   .order-card > header { grid-template-columns: 1fr; }
   .footer-grid { grid-template-columns: 1fr; gap: 28px; }
   .footer-bottom { flex-direction: column; }

@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useStore } from '../context/StoreContext';
-import type { Category, OrderStatus, Product } from '../types';
+import type { Category, Order, OrderStatus, Product } from '../types';
 import { formatMoney, formatShippingCost, getOrderShipping, getOrderTotal } from '../utils/orderDisplay';
 import { categorySchema, productSchema } from '../validation/schemas';
 
@@ -19,6 +19,7 @@ export function AdminPage() {
   const [creatingProduct, setCreatingProduct] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [creatingCategory, setCreatingCategory] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [adminMessage, setAdminMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   if (store.currentUser?.role !== 'admin') return <Navigate to="/" replace />;
@@ -195,6 +196,7 @@ export function AdminPage() {
                     <th>Total</th>
                     <th>Pago</th>
                     <th>Estado</th>
+                    <th>Acción</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -223,6 +225,11 @@ export function AdminPage() {
                               <option key={status}>{status}</option>
                             ))}
                           </select>
+                        </td>
+                        <td>
+                          <div className="table-actions inline">
+                            <button onClick={() => setSelectedOrder(order)}>Ver</button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -308,12 +315,176 @@ export function AdminPage() {
           }}
         />
       )}
+
+      {selectedOrder && (
+        <OrderDetailModal
+          order={selectedOrder}
+          onClose={() => setSelectedOrder(null)}
+          onStatusChange={(status) => {
+            const result = store.updateOrderStatus(selectedOrder.id, status);
+            setSelectedOrder((currentOrder) =>
+              currentOrder
+                ? {
+                    ...currentOrder,
+                    status,
+                    statusHistory: [...(currentOrder.statusHistory ?? []), { status, date: new Date().toISOString() }],
+                  }
+                : currentOrder,
+            );
+            setAdminMessage({ type: result.ok ? 'success' : 'error', text: result.message });
+          }}
+        />
+      )}
     </section>
   );
 }
 
 type ProductFormData = Omit<Product, 'id' | 'createdAt' | 'updatedAt'>;
 type CategoryFormData = Omit<Category, 'id' | 'createdAt' | 'slug'>;
+
+function OrderDetailModal({
+  order,
+  onClose,
+  onStatusChange,
+}: {
+  order: Order;
+  onClose: () => void;
+  onStatusChange: (status: OrderStatus) => void;
+}) {
+  const shipping = getOrderShipping(order);
+  const phoneDigits = shipping.phone.replace(/\D/g, '');
+  const whatsappPhone = phoneDigits.startsWith('593') ? phoneDigits : phoneDigits.replace(/^0/, '593');
+  const whatsappMessage = encodeURIComponent(`Hola ${shipping.fullName}, te contactamos por tu pedido ${order.id} en Nova Store.`);
+  const whatsappUrl = phoneDigits ? `https://wa.me/${whatsappPhone}?text=${whatsappMessage}` : '';
+  const history = order.statusHistory?.length ? order.statusHistory : [{ status: order.status, date: order.createdAt }];
+
+  return (
+    <div className="modal-backdrop" role="presentation" onMouseDown={onClose}>
+      <section className="product-modal admin-order-modal" role="dialog" aria-modal="true" aria-labelledby="order-detail-title" onMouseDown={(event) => event.stopPropagation()}>
+        <button className="modal-close icon-button" type="button" onClick={onClose} aria-label="Cerrar">
+          ×
+        </button>
+
+        <div className="admin-order-head">
+          <div>
+            <span className="eyebrow">PEDIDO</span>
+            <h2 id="order-detail-title">{order.id}</h2>
+            <p>{formatDate(order.createdAt)}</p>
+          </div>
+          <span className={`status status-${order.status.toLowerCase()}`}>{order.status}</span>
+        </div>
+
+        <div className="admin-order-grid">
+          <article className="admin-order-panel">
+            <h3>Cliente y entrega</h3>
+            <dl>
+              <div>
+                <dt>Nombre</dt>
+                <dd>{shipping.fullName}</dd>
+              </div>
+              <div>
+                <dt>Correo</dt>
+                <dd>{shipping.email}</dd>
+              </div>
+              <div>
+                <dt>Teléfono</dt>
+                <dd>{shipping.phone}</dd>
+              </div>
+              <div>
+                <dt>Ciudad</dt>
+                <dd>{shipping.city}, {shipping.province}</dd>
+              </div>
+              <div>
+                <dt>Dirección</dt>
+                <dd>{shipping.address}</dd>
+              </div>
+              {shipping.notes && (
+                <div>
+                  <dt>Notas</dt>
+                  <dd>{shipping.notes}</dd>
+                </div>
+              )}
+            </dl>
+            {whatsappUrl && (
+              <a className="button secondary full" href={whatsappUrl} target="_blank" rel="noreferrer">
+                Contactar por WhatsApp
+              </a>
+            )}
+          </article>
+
+          <article className="admin-order-panel">
+            <h3>Pago y estado</h3>
+            <dl>
+              <div>
+                <dt>Método</dt>
+                <dd>{order.paymentMethod}</dd>
+              </div>
+              <div>
+                <dt>Referencia</dt>
+                <dd>{order.paymentReference || 'Sin referencia'}</dd>
+              </div>
+            </dl>
+            <label className="admin-status-control">
+              Estado del pedido
+              <select value={order.status} onChange={(event) => onStatusChange(event.target.value as OrderStatus)}>
+                {(['Pendiente', 'Procesando', 'Enviado', 'Entregado'] as OrderStatus[]).map((status) => (
+                  <option key={status}>{status}</option>
+                ))}
+              </select>
+            </label>
+          </article>
+        </div>
+
+        <article className="admin-order-panel">
+          <h3>Productos</h3>
+          <div className="admin-order-items">
+            {(order.items ?? []).map((item) => (
+              <div key={`${item.productId}-${item.name}`}>
+                <img src={item.image} alt={item.name} />
+                <span>
+                  <strong>{item.name}</strong>
+                  <small>{item.quantity} × {formatMoney(item.price)}</small>
+                </span>
+                <b>{formatMoney(item.price * item.quantity)}</b>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <div className="admin-order-bottom">
+          <article className="admin-order-panel">
+            <h3>Resumen</h3>
+            <div className="admin-order-totals">
+              <span>Subtotal <strong>{formatMoney(order.subtotal)}</strong></span>
+              <span>IVA 15% <strong>{formatMoney(order.tax)}</strong></span>
+              <span>Envío <strong>{formatShippingCost(order.shippingCost)}</strong></span>
+              <span className="total">Total <strong>{formatMoney(order.total)}</strong></span>
+            </div>
+          </article>
+
+          <article className="admin-order-panel">
+            <h3>Historial</h3>
+            <ol className="admin-status-timeline">
+              {history.map((entry, index) => (
+                <li key={`${entry.status}-${entry.date}-${index}`}>
+                  <strong>{entry.status}</strong>
+                  <small>{formatDate(entry.date)}</small>
+                </li>
+              ))}
+            </ol>
+          </article>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function formatDate(value?: string) {
+  if (!value) return 'Fecha no registrada';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Fecha no registrada';
+  return date.toLocaleDateString('es-EC', { day: '2-digit', month: 'long', year: 'numeric' });
+}
 
 function CategoryFormModal({
   category,
