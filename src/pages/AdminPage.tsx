@@ -471,6 +471,7 @@ export function AdminPage() {
       {selectedOrder && (
         <OrderDetailModal
           order={selectedOrder}
+          settings={store.storeSettings}
           onClose={() => setSelectedOrder(null)}
           onStatusChange={(status) => {
             const result = store.updateOrderStatus(selectedOrder.id, status);
@@ -845,18 +846,19 @@ function StoreSettingsPanel({
 
 function OrderDetailModal({
   order,
+  settings,
   onClose,
   onStatusChange,
 }: {
   order: Order;
+  settings: StoreSettings;
   onClose: () => void;
   onStatusChange: (status: OrderStatus) => void;
 }) {
   const shipping = getOrderShipping(order);
   const phoneDigits = shipping.phone.replace(/\D/g, '');
   const whatsappPhone = phoneDigits.startsWith('593') ? phoneDigits : phoneDigits.replace(/^0/, '593');
-  const whatsappMessage = encodeURIComponent(`Hola ${shipping.fullName}, te contactamos por tu pedido ${order.id} en Nova Store.`);
-  const whatsappUrl = phoneDigits ? `https://wa.me/${whatsappPhone}?text=${whatsappMessage}` : '';
+  const whatsappMessages = phoneDigits ? getAdminWhatsAppMessages(order, settings, shipping, whatsappPhone) : [];
   const history = order.statusHistory?.length ? order.statusHistory : [{ status: order.status, date: order.createdAt }];
 
   return (
@@ -906,10 +908,15 @@ function OrderDetailModal({
                 </div>
               )}
             </dl>
-            {whatsappUrl && (
-              <a className="button secondary full" href={whatsappUrl} target="_blank" rel="noreferrer">
-                Contactar por WhatsApp
-              </a>
+            {whatsappMessages.length > 0 && (
+              <div className="whatsapp-quick-actions">
+                <h4>Mensajes rápidos</h4>
+                {whatsappMessages.map((message) => (
+                  <a className="button secondary full" href={message.url} target="_blank" rel="noreferrer" key={message.label}>
+                    {message.label}
+                  </a>
+                ))}
+              </div>
             )}
           </article>
 
@@ -985,6 +992,44 @@ function formatDate(value?: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 'Fecha no registrada';
   return date.toLocaleDateString('es-EC', { day: '2-digit', month: 'long', year: 'numeric' });
+}
+
+function getAdminWhatsAppMessages(order: Order, settings: StoreSettings, shipping: ReturnType<typeof getOrderShipping>, phone: string) {
+  const firstName = shipping.fullName.split(' ')[0] || shipping.fullName;
+  const products = (order.items ?? []).map((item) => `• ${item.quantity} x ${item.name}`).join('\n');
+  const deliveryLine = `${shipping.address}, ${shipping.city}`;
+  const total = formatMoney(getOrderTotal(order));
+  const paymentReference = order.paymentReference ? `\nReferencia registrada: ${order.paymentReference}` : '';
+  const bankLine = settings.bankAccountLabel ? `\nDatos de pago: ${settings.bankAccountLabel}` : '';
+  const signature = `\n\n${settings.name}`;
+  const buildUrl = (message: string) => `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+
+  return [
+    {
+      label: 'Confirmar pedido',
+      url: buildUrl(
+        `Hola ${firstName}, confirmamos tu pedido ${order.id} por ${total}.\n\nProductos:\n${products}\n\nEntrega: ${deliveryLine}\nEstado actual: ${order.status}.${signature}`,
+      ),
+    },
+    {
+      label: 'Enviar datos de pago',
+      url: buildUrl(
+        `Hola ${firstName}, para avanzar con tu pedido ${order.id} por ${total}, puedes realizar el pago y enviarnos el comprobante por este chat.${bankLine}${paymentReference}${signature}`,
+      ),
+    },
+    {
+      label: 'Avisar que está en camino',
+      url: buildUrl(
+        `Hola ${firstName}, tu pedido ${order.id} ya está en camino.\n\nEntrega: ${deliveryLine}\nTotal: ${total}\n\nTe avisaremos cualquier novedad.${signature}`,
+      ),
+    },
+    {
+      label: 'Avisar entrega completada',
+      url: buildUrl(
+        `Hola ${firstName}, registramos tu pedido ${order.id} como entregado. Gracias por comprar en ${settings.name}. Si necesitas ayuda con tu compra, puedes escribirnos por este chat.`,
+      ),
+    },
+  ];
 }
 
 function CategoryFormModal({

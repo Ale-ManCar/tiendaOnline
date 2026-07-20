@@ -439,6 +439,9 @@ td { padding: 13px 10px; border-bottom: 1px solid var(--line); font-size: 13px; 
 .admin-order-panel dl div, .admin-order-totals span { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
 .admin-order-panel dt { color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
 .admin-order-panel dd { margin: 0; text-align: right; font-weight: 700; }
+.whatsapp-quick-actions { display: grid; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.whatsapp-quick-actions h4 { margin: 0 0 2px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+.whatsapp-quick-actions .button { min-height: 42px; justify-content: flex-start; font-size: 13px; }
 .admin-status-control { display: flex; flex-direction: column; gap: 8px; color: #45474d; font-size: 13px; font-weight: 800; }
 .admin-status-control select { width: 100%; min-height: 46px; border: 1px solid var(--line); background: white; border-radius: 11px; padding: 0 13px; outline: 0; }
 .admin-order-items { display: grid; gap: 12px; }
