@@ -1,4 +1,4 @@
-import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useStore } from '../context/StoreContext';
 import type { Category, Order, OrderStatus, Product } from '../types';
@@ -16,167 +16,6 @@ const tabs = {
 } as const;
 
 const LOW_STOCK_THRESHOLD = 5;
-const CATALOG_CSV_HEADERS = ['name', 'sku', 'category', 'price', 'stock', 'image', 'description', 'featured', 'active'] as const;
-
-type CatalogCsvHeader = (typeof CATALOG_CSV_HEADERS)[number];
-type ProductFormData = Omit<Product, 'id' | 'createdAt' | 'updatedAt'>;
-
-const templateProducts: ProductFormData[] = [
-  {
-    name: 'Ejemplo producto destacado',
-    sku: 'SKU-EJEMPLO-001',
-    category: 'Tecnología',
-    price: 29.99,
-    stock: 12,
-    image: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=900&q=80',
-    description: 'Descripción breve del producto.',
-    featured: true,
-    active: true,
-  },
-  {
-    name: 'Ejemplo producto normal',
-    sku: 'SKU-EJEMPLO-002',
-    category: 'Hogar',
-    price: 18.5,
-    stock: 20,
-    image: 'https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85?auto=format&fit=crop&w=900&q=80',
-    description: 'Otro producto listo para editar.',
-    featured: false,
-    active: true,
-  },
-];
-
-const escapeCsvValue = (value: unknown) => {
-  const text = String(value ?? '');
-  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-};
-
-const productsToCsv = (products: ProductFormData[]) => [
-  CATALOG_CSV_HEADERS.join(','),
-  ...products.map((product) =>
-    CATALOG_CSV_HEADERS.map((header) => escapeCsvValue(product[header])).join(','),
-  ),
-].join('\n');
-
-const downloadCsv = (filename: string, csv: string) => {
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
-};
-
-const parseCsvRows = (text: string) => {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let cell = '';
-  let insideQuotes = false;
-
-  for (let index = 0; index < text.length; index += 1) {
-    const char = text[index];
-    const nextChar = text[index + 1];
-
-    if (char === '"' && insideQuotes && nextChar === '"') {
-      cell += '"';
-      index += 1;
-      continue;
-    }
-
-    if (char === '"') {
-      insideQuotes = !insideQuotes;
-      continue;
-    }
-
-    if (char === ',' && !insideQuotes) {
-      row.push(cell);
-      cell = '';
-      continue;
-    }
-
-    if ((char === '\n' || char === '\r') && !insideQuotes) {
-      if (char === '\r' && nextChar === '\n') index += 1;
-      row.push(cell);
-      if (row.some((value) => value.trim())) rows.push(row);
-      row = [];
-      cell = '';
-      continue;
-    }
-
-    cell += char;
-  }
-
-  row.push(cell);
-  if (row.some((value) => value.trim())) rows.push(row);
-
-  return rows;
-};
-
-const parseCsvBoolean = (value: string, fallback: boolean) => {
-  const normalized = value.trim().toLowerCase();
-  if (!normalized) return fallback;
-  if (['true', '1', 'yes', 'si', 'sí', 'activo', 'activa', 'destacado'].includes(normalized)) return true;
-  if (['false', '0', 'no', 'inactivo', 'inactiva'].includes(normalized)) return false;
-  return fallback;
-};
-
-const getCsvValue = (row: string[], headers: Map<string, number>, header: CatalogCsvHeader) => row[headers.get(header) ?? -1]?.trim() ?? '';
-
-const parseCatalogCsv = (text: string, existingProducts: Product[], categories: Category[]) => {
-  const rows = parseCsvRows(text);
-  const errors: string[] = [];
-  const products: ProductFormData[] = [];
-
-  if (rows.length < 2) return { products, errors: ['El CSV debe incluir encabezados y al menos un producto.'] };
-
-  const headers = new Map(rows[0].map((header, index) => [header.trim().toLowerCase(), index]));
-  const requiredHeaders: CatalogCsvHeader[] = ['name', 'sku', 'category', 'price', 'stock', 'image', 'description'];
-  const missingHeaders = requiredHeaders.filter((header) => !headers.has(header));
-
-  if (missingHeaders.length) {
-    return { products, errors: [`Faltan columnas obligatorias: ${missingHeaders.join(', ')}.`] };
-  }
-
-  const existingSkus = new Set(existingProducts.map((product) => product.sku.trim().toLowerCase()));
-  const incomingSkus = new Set<string>();
-
-  rows.slice(1).forEach((row, index) => {
-    const rowNumber = index + 2;
-    const categoryName = getCsvValue(row, headers, 'category');
-    const category = categories.find((candidate) => candidate.active && candidate.name.toLowerCase() === categoryName.toLowerCase());
-    const sku = getCsvValue(row, headers, 'sku');
-    const normalizedSku = sku.toLowerCase();
-
-    if (!category) errors.push(`Fila ${rowNumber}: la categoría "${categoryName || '(vacía)'}" no existe o está inactiva.`);
-    if (existingSkus.has(normalizedSku)) errors.push(`Fila ${rowNumber}: el SKU "${sku}" ya existe en el catálogo.`);
-    if (incomingSkus.has(normalizedSku)) errors.push(`Fila ${rowNumber}: el SKU "${sku}" está repetido en el CSV.`);
-    incomingSkus.add(normalizedSku);
-
-    const parsed = productSchema.safeParse({
-      name: getCsvValue(row, headers, 'name'),
-      sku,
-      category: category?.name ?? categoryName,
-      price: getCsvValue(row, headers, 'price'),
-      stock: getCsvValue(row, headers, 'stock'),
-      image: getCsvValue(row, headers, 'image'),
-      description: getCsvValue(row, headers, 'description'),
-      featured: parseCsvBoolean(getCsvValue(row, headers, 'featured'), false),
-      active: parseCsvBoolean(getCsvValue(row, headers, 'active'), true),
-    });
-
-    if (!parsed.success) {
-      parsed.error.issues.forEach((issue) => {
-        errors.push(`Fila ${rowNumber}: ${issue.message}.`);
-      });
-      return;
-    }
-
-    if (category) products.push({ ...parsed.data, categoryId: category.id });
-  });
-
-  return { products, errors };
-};
 
 export function AdminPage() {
   const store = useStore();
@@ -188,8 +27,6 @@ export function AdminPage() {
   const [creatingCategory, setCreatingCategory] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [adminMessage, setAdminMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [importErrors, setImportErrors] = useState<string[]>([]);
-  const importInputRef = useRef<HTMLInputElement>(null);
 
   if (store.currentUser?.role !== 'admin') return <Navigate to="/" replace />;
 
@@ -207,40 +44,6 @@ export function AdminPage() {
   const closeCategoryForm = () => {
     setEditingCategory(null);
     setCreatingCategory(false);
-  };
-
-  const exportCatalog = () => {
-    downloadCsv('nova-store-catalogo.csv', productsToCsv(store.products));
-    setAdminMessage({ type: 'success', text: 'Catálogo exportado en CSV.' });
-  };
-
-  const downloadCatalogTemplate = () => {
-    downloadCsv('nova-store-plantilla-catalogo.csv', productsToCsv(templateProducts));
-    setAdminMessage({ type: 'success', text: 'Plantilla CSV descargada.' });
-  };
-
-  const importCatalog = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-
-    try {
-      const text = await file.text();
-      const result = parseCatalogCsv(text, store.products, store.categories);
-
-      if (result.errors.length) {
-        setImportErrors(result.errors.slice(0, 12));
-        setAdminMessage({ type: 'error', text: 'El CSV tiene errores. No se importó ningún producto.' });
-        return;
-      }
-
-      result.products.forEach((product) => store.addProduct(product));
-      setImportErrors([]);
-      setAdminMessage({ type: 'success', text: `${result.products.length} productos importados correctamente.` });
-    } catch {
-      setImportErrors(['No se pudo leer el archivo. Revisa que sea un CSV válido.']);
-      setAdminMessage({ type: 'error', text: 'No se pudo importar el CSV.' });
-    }
   };
 
   return (
@@ -320,16 +123,6 @@ export function AdminPage() {
                     </p>
                   </div>
                   <div className="admin-toolbar-actions">
-                    <button className="button secondary" onClick={downloadCatalogTemplate} type="button">
-                      Plantilla CSV
-                    </button>
-                    <button className="button secondary" onClick={exportCatalog} type="button">
-                      Exportar CSV
-                    </button>
-                    <button className="button secondary" onClick={() => importInputRef.current?.click()} type="button">
-                      Importar CSV
-                    </button>
-                    <input ref={importInputRef} className="visually-hidden" type="file" accept=".csv,text/csv" onChange={importCatalog} />
                     <button className="button secondary" onClick={() => setShowLowStockOnly((current) => !current)}>
                       {showLowStockOnly ? 'Ver todo' : 'Ver stock bajo'}
                     </button>
@@ -338,17 +131,6 @@ export function AdminPage() {
                     </button>
                   </div>
                 </div>
-
-                {importErrors.length > 0 && (
-                  <div className="csv-import-errors" role="alert">
-                    <strong>Corrige el CSV antes de importarlo:</strong>
-                    <ul>
-                      {importErrors.map((error) => (
-                        <li key={error}>{error}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
 
                 <table>
                   <thead>
@@ -622,6 +404,7 @@ export function AdminPage() {
   );
 }
 
+type ProductFormData = Omit<Product, 'id' | 'createdAt' | 'updatedAt'>;
 type CategoryFormData = Omit<Category, 'id' | 'createdAt' | 'slug'>;
 
 type SalesInsights = ReturnType<typeof getSalesInsights>;
