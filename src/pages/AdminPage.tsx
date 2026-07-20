@@ -12,9 +12,12 @@ const tabs = {
   users: 'Usuarios',
 } as const;
 
+const LOW_STOCK_THRESHOLD = 5;
+
 export function AdminPage() {
   const store = useStore();
   const [tab, setTab] = useState<keyof typeof tabs>('products');
+  const [showLowStockOnly, setShowLowStockOnly] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [creatingProduct, setCreatingProduct] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -23,6 +26,11 @@ export function AdminPage() {
   const [adminMessage, setAdminMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   if (store.currentUser?.role !== 'admin') return <Navigate to="/" replace />;
+
+  const activeProducts = store.products.filter((product) => product.active);
+  const lowStockProducts = activeProducts.filter((product) => product.stock > 0 && product.stock <= LOW_STOCK_THRESHOLD);
+  const outOfStockProducts = activeProducts.filter((product) => product.stock === 0);
+  const visibleProducts = showLowStockOnly ? store.products.filter((product) => product.active && product.stock <= LOW_STOCK_THRESHOLD) : store.products;
 
   const closeProductForm = () => {
     setEditingProduct(null);
@@ -55,9 +63,22 @@ export function AdminPage() {
           <div>
             <span>
               <small>Productos activos</small>
-              <strong>{store.products.filter((product) => product.active).length}</strong>
+              <strong>{activeProducts.length}</strong>
             </span>
           </div>
+          <button
+            className={`admin-stat-button ${showLowStockOnly ? 'active' : ''}`}
+            onClick={() => {
+              setTab('products');
+              setShowLowStockOnly((current) => !current);
+            }}
+            type="button"
+          >
+            <span>
+              <small>Stock bajo</small>
+              <strong>{lowStockProducts.length + outOfStockProducts.length}</strong>
+            </span>
+          </button>
           <div>
             <span>
               <small>Pedidos</small>
@@ -89,11 +110,20 @@ export function AdminPage() {
                 <div className="admin-toolbar">
                   <div>
                     <h2>Catálogo</h2>
-                    <p>Agrega, edita, destaca o desactiva productos para la tienda.</p>
+                    <p>
+                      {showLowStockOnly
+                        ? `Mostrando productos con ${LOW_STOCK_THRESHOLD} unidades o menos.`
+                        : 'Agrega, edita, destaca o desactiva productos para la tienda.'}
+                    </p>
                   </div>
-                  <button className="button primary" onClick={() => setCreatingProduct(true)}>
-                    Nuevo producto
-                  </button>
+                  <div className="admin-toolbar-actions">
+                    <button className="button secondary" onClick={() => setShowLowStockOnly((current) => !current)}>
+                      {showLowStockOnly ? 'Ver todo' : 'Ver stock bajo'}
+                    </button>
+                    <button className="button primary" onClick={() => setCreatingProduct(true)}>
+                      Nuevo producto
+                    </button>
+                  </div>
                 </div>
 
                 <table>
@@ -109,7 +139,14 @@ export function AdminPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {store.products.map((product) => (
+                    {visibleProducts.length === 0 && (
+                      <tr>
+                        <td className="empty-table" colSpan={7}>
+                          {showLowStockOnly ? 'Inventario saludable: no hay productos con stock bajo.' : 'Todavía no hay productos registrados.'}
+                        </td>
+                      </tr>
+                    )}
+                    {visibleProducts.map((product) => (
                       <tr key={product.id}>
                         <td>
                           <div className="table-product">
@@ -123,8 +160,15 @@ export function AdminPage() {
                         <td>{product.sku}</td>
                         <td>{product.category}</td>
                         <td>${product.price.toFixed(2)}</td>
-                        <td>{product.stock}</td>
-                        <td>{product.active ? 'Activo' : 'Inactivo'}</td>
+                        <td>
+                          <span className={product.active && product.stock <= LOW_STOCK_THRESHOLD ? 'low-stock' : ''}>{product.stock}</span>
+                          {product.active && product.stock === 0 && <small className="block danger-text">Agotado</small>}
+                          {product.active && product.stock > 0 && product.stock <= LOW_STOCK_THRESHOLD && <small className="block warning-text">Reponer pronto</small>}
+                        </td>
+                        <td>
+                          {product.active ? 'Activo' : 'Inactivo'}
+                          {product.active && product.stock <= LOW_STOCK_THRESHOLD && <span className="stock-badge">Stock bajo</span>}
+                        </td>
                         <td>
                           <div className="table-actions inline">
                             <button onClick={() => setEditingProduct(product)}>Editar</button>
