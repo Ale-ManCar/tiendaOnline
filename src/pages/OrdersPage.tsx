@@ -66,13 +66,18 @@ export function OrdersPage() {
                   </div>
 
                   <footer>
-                    <span>
-                      <strong>Pago:</strong> {order.paymentMethod}
-                      {order.paymentReference ? ` · Ref: ${order.paymentReference}` : ''}
-                    </span>
-                    <span>
-                      <strong>Envío:</strong> {formatShippingCost(order.shippingCost)} · {shipping.address}, {shipping.city}
-                    </span>
+                    <div>
+                      <span>
+                        <strong>Pago:</strong> {order.paymentMethod}
+                        {order.paymentReference ? ` · Ref: ${order.paymentReference}` : ''}
+                      </span>
+                      <span>
+                        <strong>Envío:</strong> {formatShippingCost(order.shippingCost)} · {shipping.address}, {shipping.city}
+                      </span>
+                    </div>
+                    <Link className="button secondary small" to="/rastreo">
+                      Rastrear pedido
+                    </Link>
                   </footer>
                 </article>
               );

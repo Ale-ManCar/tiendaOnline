@@ -60,7 +60,6 @@ export function Layout() {
           <nav className={menuOpen ? 'main-nav open' : 'main-nav'} aria-label="Navegación principal">
             <NavLink to="/" onClick={closeNavigation}>Inicio</NavLink>
             <NavLink to="/catalogo" onClick={closeNavigation}>Catálogo</NavLink>
-            <NavLink to="/rastreo" onClick={closeNavigation}>Rastrear pedido</NavLink>
             {currentUser && <NavLink to="/pedidos" onClick={closeNavigation}>Mis pedidos</NavLink>}
             {currentUser?.role === 'admin' && <NavLink to="/admin" onClick={closeNavigation}>Administración</NavLink>}
             <form className="mobile-search" onSubmit={submitSearch}>

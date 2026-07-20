@@ -272,7 +272,9 @@ textarea { padding-top: 12px !important; min-height: 95px !important; resize: ve
 .order-products img { width: 58px; height: 66px; border-radius: 10px; object-fit: cover; }
 .order-products span { display: flex; flex-direction: column; gap: 4px; }
 .order-products small { color: var(--muted); }
-.order-card > footer { border-top: 1px solid var(--line); padding: 16px 24px; display: flex; justify-content: space-between; gap: 20px; color: var(--muted); font-size: 13px; }
+.order-card > footer { border-top: 1px solid var(--line); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; gap: 20px; color: var(--muted); font-size: 13px; }
+.order-card > footer > div { display: flex; flex-direction: column; gap: 6px; }
+.order-card > footer .button { flex: 0 0 auto; }
 
 .tracking-page { background: #fbfbf9; min-height: 72vh; }
 .tracking-hero { max-width: 760px; margin-bottom: 28px; }
