@@ -1,6 +1,7 @@
 import { PackageOpen } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
 import { useStore } from '../context/StoreContext';
+import { formatMoney, formatShippingCost, getOrderShipping } from '../utils/orderDisplay';
 
 export function OrdersPage() {
   const { currentUser, orders } = useStore();
@@ -29,50 +30,53 @@ export function OrdersPage() {
           </div>
         ) : (
           <div className="orders-list">
-            {userOrders.map((order) => (
-              <article className="order-card" key={order.id}>
-                <header>
-                  <div>
-                    <span>Pedido</span>
-                    <strong>{order.id}</strong>
-                  </div>
-                  <div>
-                    <span>Fecha</span>
-                    <strong>{new Date(order.createdAt).toLocaleDateString('es-EC', { day: '2-digit', month: 'long', year: 'numeric' })}</strong>
-                  </div>
-                  <div>
-                    <span>Total</span>
-                    <strong>${order.total.toFixed(2)}</strong>
-                  </div>
-                  <span className={`status status-${order.status.toLowerCase()}`}>{order.status}</span>
-                </header>
+            {userOrders.map((order) => {
+              const shipping = getOrderShipping(order);
 
-                <div className="order-products">
-                  {order.items.map((item) => (
-                    <div key={item.productId}>
-                      <img src={item.image} alt={item.name} />
-                      <span>
-                        <strong>{item.name}</strong>
-                        <small>
-                          {item.quantity} × ${item.price.toFixed(2)}
-                        </small>
-                      </span>
+              return (
+                <article className="order-card" key={order.id}>
+                  <header>
+                    <div>
+                      <span>Pedido</span>
+                      <strong>{order.id}</strong>
                     </div>
-                  ))}
-                </div>
+                    <div>
+                      <span>Fecha</span>
+                      <strong>{new Date(order.createdAt).toLocaleDateString('es-EC', { day: '2-digit', month: 'long', year: 'numeric' })}</strong>
+                    </div>
+                    <div>
+                      <span>Total</span>
+                      <strong>{formatMoney(order.total)}</strong>
+                    </div>
+                    <span className={`status status-${order.status.toLowerCase()}`}>{order.status}</span>
+                  </header>
 
-                <footer>
-                  <span>
-                    <strong>Pago:</strong> {order.paymentMethod}
-                    {order.paymentReference ? ` · Ref: ${order.paymentReference}` : ''}
-                  </span>
-                  <span>
-                    <strong>Envío:</strong> {order.shippingCost === 0 ? 'Gratis' : `$${order.shippingCost.toFixed(2)}`} · {order.shipping.address},{' '}
-                    {order.shipping.city}
-                  </span>
-                </footer>
-              </article>
-            ))}
+                  <div className="order-products">
+                    {order.items.map((item) => (
+                      <div key={item.productId}>
+                        <img src={item.image} alt={item.name} />
+                        <span>
+                          <strong>{item.name}</strong>
+                          <small>
+                            {item.quantity} × {formatMoney(item.price)}
+                          </small>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <footer>
+                    <span>
+                      <strong>Pago:</strong> {order.paymentMethod}
+                      {order.paymentReference ? ` · Ref: ${order.paymentReference}` : ''}
+                    </span>
+                    <span>
+                      <strong>Envío:</strong> {formatShippingCost(order.shippingCost)} · {shipping.address}, {shipping.city}
+                    </span>
+                  </footer>
+                </article>
+              );
+            })}
           </div>
         )}
       </div>

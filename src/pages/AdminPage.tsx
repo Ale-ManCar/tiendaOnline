@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useStore } from '../context/StoreContext';
 import type { Category, OrderStatus, Product } from '../types';
+import { formatMoney, formatShippingCost, getOrderShipping, getOrderTotal } from '../utils/orderDisplay';
 import { categorySchema, productSchema } from '../validation/schemas';
 
 const tabs = {
@@ -47,7 +48,7 @@ export function AdminPage() {
           <div>
             <span>
               <small>Ingresos</small>
-              <strong>${store.orders.reduce((amount, order) => amount + order.total, 0).toFixed(2)}</strong>
+              <strong>{formatMoney(store.orders.reduce((amount, order) => amount + getOrderTotal(order), 0))}</strong>
             </span>
           </div>
           <div>
@@ -197,31 +198,35 @@ export function AdminPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {store.orders.map((order) => (
-                    <tr key={order.id}>
-                      <td>{order.id}</td>
-                      <td>
-                        {order.shipping.fullName}
-                        <small className="block">{order.shipping.email}</small>
-                      </td>
-                      <td>
-                        {order.shippingCost === 0 ? 'Gratis' : `$${order.shippingCost.toFixed(2)}`}
-                        <small className="block">{order.shipping.city}</small>
-                      </td>
-                      <td>${order.total.toFixed(2)}</td>
-                      <td>
-                        {order.paymentMethod}
-                        {order.paymentReference && <small className="block">Ref: {order.paymentReference}</small>}
-                      </td>
-                      <td>
-                        <select value={order.status} onChange={(event) => store.updateOrderStatus(order.id, event.target.value as OrderStatus)}>
-                          {(['Pendiente', 'Procesando', 'Enviado', 'Entregado'] as OrderStatus[]).map((status) => (
-                            <option key={status}>{status}</option>
-                          ))}
-                        </select>
-                      </td>
-                    </tr>
-                  ))}
+                  {store.orders.map((order) => {
+                    const shipping = getOrderShipping(order);
+
+                    return (
+                      <tr key={order.id}>
+                        <td>{order.id}</td>
+                        <td>
+                          {shipping.fullName}
+                          <small className="block">{shipping.email}</small>
+                        </td>
+                        <td>
+                          {formatShippingCost(order.shippingCost)}
+                          <small className="block">{shipping.city}</small>
+                        </td>
+                        <td>{formatMoney(order.total)}</td>
+                        <td>
+                          {order.paymentMethod}
+                          {order.paymentReference && <small className="block">Ref: {order.paymentReference}</small>}
+                        </td>
+                        <td>
+                          <select value={order.status} onChange={(event) => store.updateOrderStatus(order.id, event.target.value as OrderStatus)}>
+                            {(['Pendiente', 'Procesando', 'Enviado', 'Entregado'] as OrderStatus[]).map((status) => (
+                              <option key={status}>{status}</option>
+                            ))}
+                          </select>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             )}

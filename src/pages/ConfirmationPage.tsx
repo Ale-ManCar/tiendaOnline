@@ -1,6 +1,7 @@
 import { CheckCircle2, Package, ShoppingBag } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { useStore } from '../context/StoreContext';
+import { formatMoney, formatShippingCost, getOrderShipping } from '../utils/orderDisplay';
 
 export function ConfirmationPage() {
   const { id } = useParams();
@@ -17,6 +18,8 @@ export function ConfirmationPage() {
       </div>
     );
   }
+
+  const shipping = getOrderShipping(order);
 
   return (
     <section className="section confirmation-page">
@@ -44,21 +47,21 @@ export function ConfirmationPage() {
               <ShoppingBag />
               <span>
                 <small>Total</small>
-                <strong>${order.total.toFixed(2)}</strong>
+                <strong>{formatMoney(order.total)}</strong>
               </span>
             </div>
           </div>
 
           <div className="confirmation-details">
             <h3>Entrega</h3>
-            <p>{order.shipping.fullName}</p>
+            <p>{shipping.fullName}</p>
             <p>
-              {order.shipping.address}, {order.shipping.city}
+              {shipping.address}, {shipping.city}
             </p>
             <p>
-              {order.shipping.email} · {order.shipping.phone}
+              {shipping.email} · {shipping.phone}
             </p>
-            <p>Envío: {order.shippingCost === 0 ? 'Gratis' : `$${order.shippingCost.toFixed(2)}`}</p>
+            <p>Envío: {formatShippingCost(order.shippingCost)}</p>
 
             <h3>Pago</h3>
             <p>{order.paymentMethod}</p>
