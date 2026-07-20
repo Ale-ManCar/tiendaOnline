@@ -23,7 +23,7 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-22.04
+    runs-on: windows-latest
 
     steps:
       - name: Check out repository
@@ -42,12 +42,13 @@ jobs:
         run: npm ci
 
       - name: Report frontend API mode
+        shell: pwsh
         run: |
-          if [ -z "$VITE_API_URL" ]; then
-            echo "VITE_API_URL is not set. The storefront will use browser-only demo fallback when the API is unavailable."
-          else
-            echo "VITE_API_URL is configured."
-          fi
+          if ([string]::IsNullOrWhiteSpace($env:VITE_API_URL)) {
+            Write-Output "VITE_API_URL is not set. The storefront will use browser-only demo fallback when the API is unavailable."
+          } else {
+            Write-Output "VITE_API_URL is configured."
+          }
 
       - name: Run frontend tests
         run: npm test
