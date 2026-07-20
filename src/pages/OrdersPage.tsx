@@ -1,4 +1,5 @@
-import { PackageOpen } from 'lucide-react';
+import { Copy, MessageCircle, PackageOpen } from 'lucide-react';
+import { useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { ProductImage } from '../components/ProductImage';
 import { useStore } from '../context/StoreContext';
@@ -8,11 +9,23 @@ import type { OrderStatus } from '../types';
 const statusSteps: OrderStatus[] = ['Pendiente', 'Procesando', 'Enviado', 'Entregado'];
 
 export function OrdersPage() {
-  const { currentUser, orders } = useStore();
+  const { currentUser, orders, storeSettings } = useStore();
+  const [copiedOrderId, setCopiedOrderId] = useState('');
 
   if (!currentUser) return <Navigate to="/" replace />;
 
   const userOrders = orders.filter((order) => order.userId === currentUser.id);
+  const supportPhoneDigits = storeSettings.supportPhone.replace(/\D/g, '');
+  const whatsappPhone = supportPhoneDigits.startsWith('593') ? supportPhoneDigits : supportPhoneDigits.replace(/^0/, '593');
+
+  const copyOrderCode = async (orderId: string) => {
+    try {
+      await navigator.clipboard.writeText(orderId);
+      setCopiedOrderId(orderId);
+    } catch {
+      setCopiedOrderId(orderId);
+    }
+  };
 
   return (
     <section className="section orders-page">
@@ -36,6 +49,10 @@ export function OrdersPage() {
           <div className="orders-list">
             {userOrders.map((order) => {
               const shipping = getOrderShipping(order);
+              const whatsappMessage = encodeURIComponent(
+                `Hola, quisiera consultar sobre mi pedido ${order.id}.\nNombre: ${shipping.fullName}\nTotal: ${formatMoney(order.total)}\nEstado: ${order.status}`,
+              );
+              const whatsappUrl = whatsappPhone ? `https://wa.me/${whatsappPhone}?text=${whatsappMessage}` : '';
 
               return (
                 <article className="order-card" key={order.id}>
@@ -105,6 +122,7 @@ export function OrdersPage() {
 
                   <footer>
                     <div>
+                      {copiedOrderId === order.id && <span className="order-copy-feedback">Código copiado</span>}
                       <span>
                         <strong>Pago:</strong> {order.paymentMethod}
                         {order.paymentReference ? ` · Ref: ${order.paymentReference}` : ''}
@@ -113,9 +131,19 @@ export function OrdersPage() {
                         <strong>Envío:</strong> {formatShippingCost(order.shippingCost)} · {shipping.address}, {shipping.city}
                       </span>
                     </div>
-                    <Link className="button secondary small" to="/rastreo">
-                      Rastrear pedido
-                    </Link>
+                    <div className="order-card-actions">
+                      <button className="button secondary small" type="button" onClick={() => copyOrderCode(order.id)}>
+                        <Copy size={15} /> Copiar código
+                      </button>
+                      {whatsappUrl && (
+                        <a className="button secondary small" href={whatsappUrl} target="_blank" rel="noreferrer">
+                          <MessageCircle size={15} /> WhatsApp
+                        </a>
+                      )}
+                      <Link className="button secondary small" to="/rastreo">
+                        Rastrear pedido
+                      </Link>
+                    </div>
                   </footer>
                 </article>
               );
