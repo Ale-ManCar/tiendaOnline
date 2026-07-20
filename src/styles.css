@@ -590,6 +590,19 @@ td { padding: 13px 10px; border-bottom: 1px solid var(--line); font-size: 13px; 
   .admin-tabs { margin-inline: -12px; padding: 0 12px 6px; }
   .admin-tabs button { flex: 0 0 auto; padding: 10px 14px; }
   .admin-toolbar { align-items: stretch; flex-direction: column; }
+  .admin-toolbar-actions .button { width: 100%; }
+  .admin-card table { min-width: 0; }
+  .admin-card thead { display: none; }
+  .admin-card tbody { display: grid; gap: 12px; }
+  .admin-card tr { display: grid; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 18px; background: #fbfbf9; }
+  .admin-card td { display: grid; grid-template-columns: 108px 1fr; gap: 12px; align-items: start; border-bottom: 0; padding: 0; font-size: 14px; }
+  .admin-card td::before { content: attr(data-label); color: var(--muted); font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; }
+  .admin-card td.empty-table { display: block; padding: 22px; text-align: center; }
+  .admin-card td.empty-table::before { display: none; }
+  .admin-card .table-product { align-items: flex-start; }
+  .admin-card .table-product img { width: 64px; height: 70px; }
+  .admin-card .table-actions.inline { justify-content: flex-start; flex-wrap: wrap; }
+  .admin-card .table-actions.inline button { min-width: 92px; }
   .sales-insights { min-width: 0; }
   .insight-grid, .insight-columns { grid-template-columns: 1fr; }
   .recent-orders > div { grid-template-columns: 1fr; align-items: start; }

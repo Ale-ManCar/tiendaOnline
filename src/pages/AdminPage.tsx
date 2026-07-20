@@ -199,7 +199,7 @@ export function AdminPage() {
                     )}
                     {visibleProducts.map((product) => (
                       <tr key={product.id}>
-                        <td>
+                        <td data-label="Producto">
                           <div className="table-product">
                             <ProductImage src={product.image} alt={product.name} />
                             <span>
@@ -208,19 +208,19 @@ export function AdminPage() {
                             </span>
                           </div>
                         </td>
-                        <td>{product.sku}</td>
-                        <td>{product.category}</td>
-                        <td>${product.price.toFixed(2)}</td>
-                        <td>
+                        <td data-label="SKU">{product.sku}</td>
+                        <td data-label="Categoría">{product.category}</td>
+                        <td data-label="Precio">${product.price.toFixed(2)}</td>
+                        <td data-label="Stock">
                           <span className={product.active && product.stock <= LOW_STOCK_THRESHOLD ? 'low-stock' : ''}>{product.stock}</span>
                           {product.active && product.stock === 0 && <small className="block danger-text">Agotado</small>}
                           {product.active && product.stock > 0 && product.stock <= LOW_STOCK_THRESHOLD && <small className="block warning-text">Reponer pronto</small>}
                         </td>
-                        <td>
+                        <td data-label="Estado">
                           {product.active ? 'Activo' : 'Inactivo'}
                           {product.active && product.stock <= LOW_STOCK_THRESHOLD && <span className="stock-badge">Stock bajo</span>}
                         </td>
-                        <td>
+                        <td data-label="Acción">
                           <div className="table-actions inline">
                             <button onClick={() => setEditingProduct(product)}>Editar</button>
                             <button className="danger" onClick={() => confirm('¿Eliminar producto?') && store.deleteProduct(product.id)}>
@@ -259,14 +259,14 @@ export function AdminPage() {
                   <tbody>
                     {store.categories.map((category) => (
                       <tr key={category.id}>
-                        <td>
+                        <td data-label="Nombre">
                           <strong>{category.name}</strong>
                           {category.description && <small className="block">{category.description}</small>}
                         </td>
-                        <td>{category.slug}</td>
-                        <td>{store.products.filter((product) => product.category === category.name || product.categoryId === category.id).length}</td>
-                        <td>{category.active ? 'Activa' : 'Inactiva'}</td>
-                        <td>
+                        <td data-label="Slug">{category.slug}</td>
+                        <td data-label="Productos">{store.products.filter((product) => product.category === category.name || product.categoryId === category.id).length}</td>
+                        <td data-label="Estado">{category.active ? 'Activa' : 'Inactiva'}</td>
+                        <td data-label="Acción">
                           <div className="table-actions inline">
                             <button onClick={() => setEditingCategory(category)}>Editar</button>
                             <button className="danger" onClick={() => confirm('¿Eliminar categoría?') && store.deleteCategory(category.id)}>
@@ -334,28 +334,28 @@ export function AdminPage() {
 
                     return (
                       <tr key={order.id}>
-                        <td>{order.id}</td>
-                        <td>
+                        <td data-label="Código">{order.id}</td>
+                        <td data-label="Cliente">
                           {shipping.fullName}
                           <small className="block">{shipping.email}</small>
                         </td>
-                        <td>
+                        <td data-label="Envío">
                           {formatShippingCost(order.shippingCost)}
                           <small className="block">{shipping.city}</small>
                         </td>
-                        <td>{formatMoney(order.total)}</td>
-                        <td>
+                        <td data-label="Total">{formatMoney(order.total)}</td>
+                        <td data-label="Pago">
                           {order.paymentMethod}
                           {order.paymentReference && <small className="block">Ref: {order.paymentReference}</small>}
                         </td>
-                        <td>
+                        <td data-label="Estado">
                           <select value={order.status} onChange={(event) => store.updateOrderStatus(order.id, event.target.value as OrderStatus)}>
                             {(['Pendiente', 'Procesando', 'Enviado', 'Entregado'] as OrderStatus[]).map((status) => (
                               <option key={status}>{status}</option>
                             ))}
                           </select>
                         </td>
-                        <td>
+                        <td data-label="Acción">
                           <div className="table-actions inline">
                             <button onClick={() => setSelectedOrder(order)}>Ver</button>
                           </div>
