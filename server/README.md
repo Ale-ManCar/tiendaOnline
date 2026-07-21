@@ -41,4 +41,24 @@ Authenticated customers can retrieve their saved order history with `GET /api/v1
 - `npm run build`
 - `npm run deploy:build`
 
+## Render deployment
+
+The root `render.yaml` defines the API web service. Use it from Render as a Blueprint. Required secret values:
+
+- `DATABASE_URL`: Neon pooled PostgreSQL connection string.
+- `ADMIN_EMAIL`: first administrator email for the client.
+- `ADMIN_PASSWORD`: first administrator password for the client.
+
+Build command:
+
+```bash
+cd server && npm ci && npm run deploy:build
+```
+
+Start command:
+
+```bash
+cd server && npm run start:prod
+```
+
 Generated Prisma Client files and real environment files are intentionally ignored. Never commit database credentials, session secrets, or payment-provider keys.

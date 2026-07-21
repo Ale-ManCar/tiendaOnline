@@ -12,6 +12,10 @@ Client-facing branding, legal name, support email, support phone, location, busi
 
 The app uses `HashRouter` because GitHub Pages does not rewrite routes to `index.html`. Vite keeps `base: '/tiendaOnline/'`; a blank screen usually means the repository name and that base path do not match. The workflow publishes only `dist` after tests and build.
 
+## Backend hosting
+
+The repository includes `render.yaml` so the API can be deployed as a Render Blueprint. Render will build from the `server` folder, run Prisma migrations during the build, and start the compiled NestJS API. During Blueprint creation, provide the Neon `DATABASE_URL`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` values when Render prompts for them.
+
 ## Persistence
 
 For sold client deployments, PostgreSQL through the backend API is the source of truth for accounts, sessions, cart contents, catalog reads and admin catalog changes, store settings, checkout orders, and order status changes. That is what lets a customer register or buy on mobile and later see the same account, cart, and orders on a PC.
