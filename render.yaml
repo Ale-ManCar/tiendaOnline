@@ -42,6 +42,12 @@ services:
         sync: false
       - key: SMTP_FROM
         sync: false
+      - key: ORDER_NOTIFICATION_EMAIL
+        value: alemancar0511@gmail.com
+      - key: STORE_NAME
+        value: Nova Store
+      - key: STORE_SUPPORT_PHONE
+        value: 0968822603
       - key: SHIPPING_FLAT_RATE
         value: 5
       - key: FREE_SHIPPING_THRESHOLD

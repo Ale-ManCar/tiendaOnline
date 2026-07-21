@@ -29,9 +29,12 @@ const prisma = {
 const config = {
   get: jest.fn((key: string, fallback: unknown) => fallback),
 };
+const mail = {
+  send: jest.fn().mockResolvedValue(undefined),
+};
 
 describe('OrdersService', () => {
-  const service = new OrdersService(prisma as unknown as PrismaService, config as unknown as ConfigService);
+  const service = new OrdersService(prisma as unknown as PrismaService, config as unknown as ConfigService, mail as never);
   const user = {
     id: '4e68d82e-91a1-406e-b9a5-7b8f1f81b27a',
     name: 'Jane Doe',
@@ -98,7 +101,17 @@ describe('OrdersService', () => {
     prisma.cartItem.deleteMany.mockResolvedValue({ count: 1 });
     prisma.order.create.mockResolvedValue({
       id: 'order-1',
+      code: 'NV-TEST',
       status: OrderStatus.PENDING_PAYMENT,
+      total: 33.75,
+      items: [
+        {
+          name: 'Pulse Pro',
+          quantity: 2,
+          unitPrice: 12.5,
+          total: 25,
+        },
+      ],
     });
 
     await expect(service.create(user, dto)).resolves.toMatchObject({
@@ -122,6 +135,7 @@ describe('OrdersService', () => {
     expect(prisma.cartItem.deleteMany).toHaveBeenCalledWith({
       where: { cartId: 'cart-1' },
     });
+    expect(mail.send).toHaveBeenCalledTimes(2);
   });
 
   it('rejects unavailable products', async () => {
