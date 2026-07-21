@@ -49,10 +49,12 @@ The root `render.yaml` defines the API web service. Use it from Render as a Blue
 - `ADMIN_EMAIL`: first administrator email for the client.
 - `ADMIN_PASSWORD`: first administrator password for the client.
 
+Use `AUTH_COOKIE_SAME_SITE=none` when the frontend and backend are on different sites, for example GitHub Pages plus `onrender.com`. Use `lax` when the final client setup uses the same main domain, such as `clientdomain.com` and `api.clientdomain.com`.
+
 Build command:
 
 ```bash
-cd server && npm ci && npm run deploy:build
+cd server && npm ci --include=dev && npm run deploy:build
 ```
 
 Start command:
