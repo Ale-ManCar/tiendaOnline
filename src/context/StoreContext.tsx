@@ -112,27 +112,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => writeStorage(KEYS.users, users), [users]);
   useEffect(() => writeStorage(KEYS.orders, orders), [orders]);
-  useEffect(() => {
-    if (!catalogLoading) writeStorage(KEYS.products, products);
-  }, [catalogLoading, products]);
-  useEffect(() => {
-    if (!catalogLoading) writeStorage(KEYS.categories, categories);
-  }, [catalogLoading, categories]);
   useEffect(() => writeStorage(cartKey(currentUser?.id), cart), [cart, currentUser]);
+
+  const loadCatalog = async () => {
+    const data = await fetchStorefrontCatalog();
+    setProducts(data.products);
+    setCategories(data.categories);
+    setCatalogError(null);
+  };
 
   useEffect(() => {
     let active = true;
     fetchStorefrontCatalog()
       .then((data) => {
         if (!active) return;
-        const storedProducts = readStorage<Product[]>(KEYS.products, []);
-        const storedCategories = readStorage<Category[]>(KEYS.categories, []);
-        setProducts(storedProducts.length ? storedProducts : data.products);
-        setCategories(storedCategories.length ? storedCategories : data.categories);
+        setProducts(data.products);
+        setCategories(data.categories);
         setCatalogError(null);
       })
       .catch((error) => {
-        if (active) setCatalogError(error instanceof Error ? error.message : 'Could not load the catalog.');
+        if (!active) return;
+        if (storeConfig.enableDemoFallback && isApiUnavailable(error)) {
+          setProducts(readStorage<Product[]>(KEYS.products, []));
+          setCategories(readStorage<Category[]>(KEYS.categories, []));
+        }
+        setCatalogError(error instanceof Error ? error.message : 'Could not load the catalog.');
       })
       .finally(() => {
         if (active) setCatalogLoading(false);
@@ -249,7 +253,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const register = async (name: string, email: string, password: string): Promise<Result> => {
     try {
-      const user = await registerAccount(name, email, password);
+      const { user, verificationRequired } = await registerAccount(name, email, password);
+      if (verificationRequired) {
+        return { ok: true, message: 'Cuenta creada. Revisa tu correo para verificarla antes de iniciar sesión.' };
+      }
       const guestCart = readStorage<CartItem[]>(cartKey(), []);
       setCurrentUser(user);
       setCart(mergeCarts([], guestCart, products));
@@ -334,6 +341,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     );
     setOrders((currentOrders) => [{ ...order, paymentReference: paymentMethod === 'Transferencia' ? paymentReference : undefined }, ...currentOrders]);
     setCart([]);
+    loadCatalog().catch((error) => {
+      if (!storeConfig.enableDemoFallback || !isApiUnavailable(error)) {
+        console.warn('Could not refresh catalog stock after creating the order.', error);
+      }
+    });
     return order;
   };
 

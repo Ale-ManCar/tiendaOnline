@@ -5,6 +5,7 @@ import { AdminPage } from './pages/AdminPage';
 import { CatalogPage } from './pages/CatalogPage';
 import { CheckoutPage } from './pages/CheckoutPage';
 import { ConfirmationPage } from './pages/ConfirmationPage';
+import { EmailVerificationPage } from './pages/EmailVerificationPage';
 import { HomePage } from './pages/HomePage';
 import { LegalPage } from './pages/LegalPage';
 import { OrdersPage } from './pages/OrdersPage';
@@ -24,6 +25,7 @@ export default function App() {
             <Route path="/producto/:id" element={<ProductDetailPage />} />
             <Route path="/legal/:policy" element={<LegalPage />} />
             <Route path="/rastreo" element={<TrackingPage />} />
+            <Route path="/verificar-email" element={<EmailVerificationPage />} />
             <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
             <Route path="/confirmacion/:id" element={<ProtectedRoute><ConfirmationPage /></ProtectedRoute>} />
             <Route path="/pedidos" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />

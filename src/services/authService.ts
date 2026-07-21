@@ -4,12 +4,13 @@ import { isApiUnavailable, loginDemoUser, logoutDemoUser, registerDemoUser, rest
 import { storeConfig } from '../config/storeConfig';
 
 type ApiUser = { id: string; name: string; email: string; role: 'CUSTOMER'|'ADMIN'|'CATALOG_MANAGER'|'FULFILLMENT'|'SUPPORT' };
-type AuthResponse = { user: ApiUser };
+type AuthResponse = { user: ApiUser; verificationRequired?: boolean };
 const mapUser = (user: ApiUser): User => ({ id:user.id,name:user.name,email:user.email,role:(user.role === 'ADMIN' ? 'admin' : 'customer') as Role,active:true,createdAt:new Date().toISOString() });
 const request = (path:string,body?:unknown) => apiRequest<AuthResponse>(path,{method:'POST',body:body?JSON.stringify(body):undefined});
 
-export async function registerAccount(name:string,email:string,password:string){try{return mapUser((await request('/auth/register',{name,email,password})).user)}catch(error){if(storeConfig.enableDemoFallback&&isApiUnavailable(error))return registerDemoUser(name,email,password);throw error}}
+export async function registerAccount(name:string,email:string,password:string){try{const response=await request('/auth/register',{name,email,password});return {user:mapUser(response.user),verificationRequired: Boolean(response.verificationRequired)}}catch(error){if(storeConfig.enableDemoFallback&&isApiUnavailable(error))return {user:registerDemoUser(name,email,password),verificationRequired:false};throw error}}
 export async function loginAccount(email:string,password:string){try{return mapUser((await request('/auth/login',{email,password})).user)}catch(error){if(storeConfig.enableDemoFallback&&isApiUnavailable(error))return loginDemoUser(email,password);throw error}}
+export async function verifyEmailAccount(token:string){return mapUser((await request('/auth/verify-email',{token})).user)}
 export async function restoreSession(){
   try{return mapUser((await apiRequest<AuthResponse>('/auth/me')).user)}catch(error){
     if(storeConfig.enableDemoFallback&&isApiUnavailable(error))return restoreDemoSession();

@@ -12,6 +12,12 @@ jest.mock('../database/prisma.service', () => ({
 
 const prisma = {
   user: { findUnique: jest.fn(), create: jest.fn() },
+  emailVerificationToken: {
+    create: jest.fn(),
+    findFirst: jest.fn(),
+    update: jest.fn(),
+  },
+  $transaction: jest.fn(),
   refreshSession: {
     create: jest.fn(),
     update: jest.fn(),
@@ -28,6 +34,7 @@ describe('AuthService security rules', () => {
     {
       get: jest.fn().mockReturnValue('a-secure-test-secret-with-32-characters'),
     } as unknown as ConfigService,
+    { isConfigured: true, send: jest.fn() } as never,
   );
 
   beforeEach(() => jest.clearAllMocks());

@@ -67,6 +67,9 @@ export function CheckoutPage() {
         ];
   }, [storeSettings.bankTransferInstructions, storeSettings.cashOnDeliveryInstructions]);
   const selectedPayment = paymentOptions.find((option) => option.method === payment) ?? paymentOptions[0];
+  const updatePhone = (value: string) => {
+    setShipping({ ...shipping, phone: value.replace(/\D/g, '').slice(0, 10) });
+  };
 
   useEffect(() => {
     if (selectedPayment && selectedPayment.method !== payment) setPayment(selectedPayment.method);
@@ -85,6 +88,10 @@ export function CheckoutPage() {
     }
     if (!shipping.fullName || !shipping.email || !shipping.phone || !shipping.province || !shipping.city || !shipping.address) {
       setError('Completa todos los campos obligatorios de entrega.');
+      return;
+    }
+    if (!/^\d{7,10}$/.test(shipping.phone)) {
+      setError('Ingresa un teléfono válido: solo números, máximo 10 dígitos.');
       return;
     }
     if (payment === 'Transferencia' && paymentReference.trim().length < 3) {
@@ -134,7 +141,14 @@ export function CheckoutPage() {
                 </label>
                 <label>
                   Teléfono *
-                  <input value={shipping.phone} onChange={(event) => setShipping({ ...shipping, phone: event.target.value })} placeholder="099 000 0000" />
+                  <input
+                    value={shipping.phone}
+                    onChange={(event) => updatePhone(event.target.value)}
+                    inputMode="numeric"
+                    pattern="[0-9]{7,10}"
+                    maxLength={10}
+                    placeholder="0990000000"
+                  />
                 </label>
                 <label>
                   Provincia *

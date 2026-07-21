@@ -19,6 +19,7 @@ import type { AuthenticatedUser, RequestMetadata } from './auth.types';
 import { CurrentUser } from './current-user.decorator';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
 import { Public } from './public.decorator';
 
 @Controller('auth')
@@ -34,8 +35,21 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ) {
     const result = await this.auth.register(dto, metadata(request));
-    setAuthCookies(response, result.access, result.refresh);
-    return { user: result.user };
+    if ('access' in result && 'refresh' in result) {
+      setAuthCookies(response, result.access, result.refresh);
+    }
+    return {
+      user: result.user,
+      verificationRequired: 'verificationRequired' in result,
+    };
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  @HttpCode(200)
+  @Post('verify-email')
+  async verifyEmail(@Body() dto: VerifyEmailDto, @Req() request: Request) {
+    return this.auth.verifyEmail(dto, metadata(request));
   }
 
   @Public()

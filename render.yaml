@@ -22,9 +22,25 @@ services:
         generateValue: true
       - key: AUTH_COOKIE_SAME_SITE
         value: none
+      - key: APP_PUBLIC_URL
+        value: https://ale-mancar.github.io/tiendaOnline
+      - key: AUTH_REQUIRE_EMAIL_VERIFICATION
+        value: false
       - key: ADMIN_EMAIL
         sync: false
       - key: ADMIN_PASSWORD
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: 587
+      - key: SMTP_SECURE
+        value: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
         sync: false
       - key: SHIPPING_FLAT_RATE
         value: 5

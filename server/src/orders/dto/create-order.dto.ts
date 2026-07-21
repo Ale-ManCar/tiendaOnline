@@ -9,6 +9,7 @@ import {
   IsString,
   IsUUID,
   Length,
+  Matches,
   Max,
   Min,
   ValidateNested,
@@ -31,7 +32,9 @@ export class ShippingAddressDto {
   recipientName!: string;
 
   @IsString()
-  @Length(7, 20)
+  @Matches(/^\d{7,10}$/, {
+    message: 'Phone must contain only numbers and have a maximum of 10 digits.',
+  })
   phone!: string;
 
   @IsString()
