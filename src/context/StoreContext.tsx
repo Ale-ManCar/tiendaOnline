@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { CartItem, Category, Order, OrderStatus, PaymentMethod, Product, Result, ShippingData, User } from '../types';
 import { cartKey, KEYS, readStorage, uid, writeStorage } from '../utils/storage';
 import { loginAccount, logoutAccount, registerAccount, restoreSession } from '../services/authService';
@@ -19,6 +19,7 @@ import { loadStoreSettings, resetStoreSettings, saveStoreSettings, storeConfig, 
 
 const now = () => new Date().toISOString();
 const round = (value: number) => Number(value.toFixed(2));
+const CART_REFRESH_INTERVAL_MS = 4_000;
 const slugify = (value: string) =>
   value
     .trim()
@@ -109,6 +110,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [orders, setOrders] = useState<Order[]>(() => readStorage(KEYS.orders, []));
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(() => loadStoreSettings());
   const [cartHydrated, setCartHydrated] = useState(false);
+  const pendingGuestCartRef = useRef<CartItem[]>([]);
+  const syncingCartRef = useRef(false);
 
   useEffect(() => writeStorage(KEYS.users, users), [users]);
   useEffect(() => writeStorage(KEYS.orders, orders), [orders]);
@@ -170,7 +173,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       .then((user) => {
         if (!active) return;
         setCurrentUser(user);
-        if (user) setCart(readStorage(cartKey(user.id), []));
+        if (user) setCart([]);
         if (!user) setCartHydrated(true);
       })
       .catch(() => {
@@ -192,7 +195,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     fetchServerCart()
       .then((serverCart) => {
         if (!active) return;
-        setCart((currentCart) => mergeCarts(serverCart, currentCart, products));
+        const guestCart = pendingGuestCartRef.current;
+        pendingGuestCartRef.current = [];
+        const nextCart = guestCart.length ? mergeCarts(serverCart, guestCart, products) : normalizeCart(serverCart, products);
+        setCart((currentCart) => (cartsEqual(currentCart, nextCart) ? currentCart : nextCart));
       })
       .catch((error) => {
         if (!storeConfig.enableDemoFallback || !isApiUnavailable(error)) {
@@ -210,12 +216,46 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!authReady || !currentUser || !cartHydrated || products.length === 0) return;
-    syncServerCart(cart, products).catch((error) => {
-      if (!storeConfig.enableDemoFallback || !isApiUnavailable(error)) {
-        console.warn('Could not persist cart to the backend.', error);
-      }
-    });
+    syncingCartRef.current = true;
+    syncServerCart(cart, products)
+      .then((serverCart) => {
+        const normalized = normalizeCart(serverCart, products);
+        setCart((currentCart) => (cartsEqual(currentCart, normalized) ? currentCart : normalized));
+      })
+      .catch((error) => {
+        if (!storeConfig.enableDemoFallback || !isApiUnavailable(error)) {
+          console.warn('Could not persist cart to the backend.', error);
+        }
+      })
+      .finally(() => {
+        syncingCartRef.current = false;
+      });
   }, [authReady, currentUser?.id, cartHydrated, cart, products]);
+
+  useEffect(() => {
+    if (!authReady || !currentUser || !cartHydrated || products.length === 0) return;
+    const refreshCart = () => {
+      if (syncingCartRef.current) return;
+      fetchServerCart()
+        .then((serverCart) => {
+          const normalized = normalizeCart(serverCart, products);
+          setCart((currentCart) => (cartsEqual(currentCart, normalized) ? currentCart : normalized));
+        })
+        .catch((error) => {
+          if (!storeConfig.enableDemoFallback || !isApiUnavailable(error)) {
+            console.warn('Could not refresh cart from the backend.', error);
+          }
+        });
+    };
+    const timer = window.setInterval(refreshCart, CART_REFRESH_INTERVAL_MS);
+    window.addEventListener('focus', refreshCart);
+    document.addEventListener('visibilitychange', refreshCart);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', refreshCart);
+      document.removeEventListener('visibilitychange', refreshCart);
+    };
+  }, [authReady, currentUser?.id, cartHydrated, products]);
 
   useEffect(() => {
     setCart((oldCart) =>
@@ -258,8 +298,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return { ok: true, message: 'Cuenta creada. Revisa tu correo para verificarla antes de iniciar sesión.' };
       }
       const guestCart = readStorage<CartItem[]>(cartKey(), []);
+      pendingGuestCartRef.current = guestCart;
       setCurrentUser(user);
-      setCart(mergeCarts([], guestCart, products));
+      setCart(normalizeCart(guestCart, products));
       setCartHydrated(false);
       writeStorage(cartKey(), []);
       return { ok: true, message: 'Cuenta creada correctamente.' };
@@ -271,10 +312,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string): Promise<Result> => {
     try {
       const user = await loginAccount(email, password);
-      const ownCart = readStorage<CartItem[]>(cartKey(user.id), []);
       const guestCart = readStorage<CartItem[]>(cartKey(), []);
+      pendingGuestCartRef.current = guestCart;
       setCurrentUser(user);
-      setCart(mergeCarts(ownCart, guestCart, products));
+      setCart(normalizeCart(guestCart, products));
       setCartHydrated(false);
       writeStorage(cartKey(), []);
       return { ok: true, message: `Bienvenido, ${user.name}.` };
@@ -574,10 +615,24 @@ function mergeCarts(firstCart: CartItem[], secondCart: CartItem[], products: Pro
   const map = new Map<string, number>();
   [...firstCart, ...secondCart].forEach((item) => map.set(item.productId, (map.get(item.productId) ?? 0) + item.quantity));
 
-  return [...map].flatMap(([productId, quantity]) => {
+  return normalizeCart(
+    [...map].map(([productId, quantity]) => ({ productId, quantity })),
+    products,
+  );
+}
+
+function normalizeCart(cart: CartItem[], products: Product[]) {
+  return cart.flatMap(({ productId, quantity }) => {
     const product = products.find((candidate) => candidate.id === productId && candidate.active);
     return product && product.stock ? [{ productId, quantity: Math.min(quantity, product.stock) }] : [];
   });
+}
+
+function cartsEqual(firstCart: CartItem[], secondCart: CartItem[]) {
+  if (firstCart.length !== secondCart.length) return false;
+  const first = [...firstCart].sort((a, b) => a.productId.localeCompare(b.productId));
+  const second = [...secondCart].sort((a, b) => a.productId.localeCompare(b.productId));
+  return first.every((item, index) => item.productId === second[index]?.productId && item.quantity === second[index]?.quantity);
 }
 
 function createLocalOrder(
