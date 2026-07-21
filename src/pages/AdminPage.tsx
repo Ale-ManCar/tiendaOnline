@@ -276,7 +276,14 @@ export function AdminPage() {
                         <td data-label="Acción">
                           <div className="table-actions inline">
                             <button onClick={() => setEditingProduct(product)}>Editar</button>
-                            <button className="danger" onClick={() => confirm('¿Eliminar producto?') && store.deleteProduct(product.id)}>
+                            <button
+                              className="danger"
+                              onClick={async () => {
+                                if (!confirm('¿Eliminar producto?')) return;
+                                const result = await store.deleteProduct(product.id);
+                                setAdminMessage({ type: result.ok ? 'success' : 'error', text: result.message });
+                              }}
+                            >
                               Eliminar
                             </button>
                           </div>
@@ -322,7 +329,14 @@ export function AdminPage() {
                         <td data-label="Acción">
                           <div className="table-actions inline">
                             <button onClick={() => setEditingCategory(category)}>Editar</button>
-                            <button className="danger" onClick={() => confirm('¿Eliminar categoría?') && store.deleteCategory(category.id)}>
+                            <button
+                              className="danger"
+                              onClick={async () => {
+                                if (!confirm('¿Eliminar categoría?')) return;
+                                const result = await store.deleteCategory(category.id);
+                                setAdminMessage({ type: result.ok ? 'success' : 'error', text: result.message });
+                              }}
+                            >
                               Eliminar
                             </button>
                           </div>
@@ -471,8 +485,8 @@ export function AdminPage() {
               <StoreSettingsPanel
                 key={JSON.stringify(store.storeSettings)}
                 settings={store.storeSettings}
-                onSubmit={(settings) => {
-                  const result = store.updateStoreSettings(settings);
+                onSubmit={async (settings) => {
+                  const result = await store.updateStoreSettings(settings);
                   setAdminMessage({ type: result.ok ? 'success' : 'error', text: result.message });
                 }}
                 onReset={() => {
@@ -507,9 +521,9 @@ export function AdminPage() {
           product={editingProduct}
           categories={store.categories}
           onClose={closeProductForm}
-          onSubmit={(formProduct) => {
+          onSubmit={async (formProduct) => {
             const category = store.categories.find((candidate) => candidate.name === formProduct.category);
-            const result = editingProduct
+            const result = await (editingProduct
               ? store.updateProduct({
                   ...editingProduct,
                   ...formProduct,
@@ -518,7 +532,7 @@ export function AdminPage() {
               : store.addProduct({
                   ...formProduct,
                   categoryId: category?.id,
-                });
+                }));
 
             setAdminMessage({ type: result.ok ? 'success' : 'error', text: result.message });
             if (result.ok) closeProductForm();
@@ -530,13 +544,13 @@ export function AdminPage() {
         <CategoryFormModal
           category={editingCategory}
           onClose={closeCategoryForm}
-          onSubmit={(formCategory) => {
-            const result = editingCategory
+          onSubmit={async (formCategory) => {
+            const result = await (editingCategory
               ? store.updateCategory({
                   ...editingCategory,
                   ...formCategory,
                 })
-              : store.addCategory(formCategory);
+              : store.addCategory(formCategory));
 
             setAdminMessage({ type: result.ok ? 'success' : 'error', text: result.message });
             if (result.ok) closeCategoryForm();

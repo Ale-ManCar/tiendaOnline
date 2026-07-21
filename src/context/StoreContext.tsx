@@ -4,6 +4,16 @@ import { cartKey, KEYS, readStorage, uid, writeStorage } from '../utils/storage'
 import { loginAccount, logoutAccount, registerAccount, restoreSession } from '../services/authService';
 import { fetchStorefrontCatalog } from '../services/catalogService';
 import { calculateOrder, createServerOrder, fetchServerOrders, updateServerOrderStatus } from '../services/orderService';
+import { fetchServerCart, syncServerCart } from '../services/cartService';
+import { fetchServerSettings, saveServerSettings } from '../services/settingsService';
+import {
+  createServerCategory,
+  createServerProduct,
+  deleteServerCategory,
+  deleteServerProduct,
+  updateServerCategory,
+  updateServerProduct,
+} from '../services/adminCatalogService';
 import { isApiUnavailable } from '../services/demoMode';
 import { loadStoreSettings, resetStoreSettings, saveStoreSettings, storeConfig, type StoreSettings } from '../config/storeConfig';
 
@@ -48,15 +58,15 @@ interface StoreValue {
   removeFromCart: (id: string) => void;
   clearCart: () => void;
   createOrder: (shipping: ShippingData, paymentMethod: PaymentMethod, reference?: string) => Promise<Order>;
-  addProduct: (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => Result;
-  updateProduct: (product: Product) => Result;
-  deleteProduct: (id: string) => Result;
-  addCategory: (category: Omit<Category, 'id' | 'createdAt' | 'slug'>) => Result;
-  updateCategory: (category: Category) => Result;
-  deleteCategory: (id: string) => Result;
+  addProduct: (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Result>;
+  updateProduct: (product: Product) => Promise<Result>;
+  deleteProduct: (id: string) => Promise<Result>;
+  addCategory: (category: Omit<Category, 'id' | 'createdAt' | 'slug'>) => Promise<Result>;
+  updateCategory: (category: Category) => Promise<Result>;
+  deleteCategory: (id: string) => Promise<Result>;
   updateOrderStatus: (id: string, status: OrderStatus) => Promise<Result>;
   toggleUser: (id: string) => Result;
-  updateStoreSettings: (settings: StoreSettings) => Result;
+  updateStoreSettings: (settings: StoreSettings) => Promise<Result>;
   restoreDefaultStoreSettings: () => Result;
   exportStoreBackup: () => StoreBackup;
   restoreStoreBackup: (backup: unknown) => Result;
@@ -98,6 +108,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>(() => readStorage(cartKey(), readStorage(KEYS.legacyCart, [])));
   const [orders, setOrders] = useState<Order[]>(() => readStorage(KEYS.orders, []));
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(() => loadStoreSettings());
+  const [cartHydrated, setCartHydrated] = useState(false);
 
   useEffect(() => writeStorage(KEYS.users, users), [users]);
   useEffect(() => writeStorage(KEYS.orders, orders), [orders]);
@@ -134,11 +145,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true;
+    fetchServerSettings()
+      .then((settings) => {
+        if (active && settings) setStoreSettings(saveStoreSettings(settings));
+      })
+      .catch((error) => {
+        if (!storeConfig.enableDemoFallback || !isApiUnavailable(error)) {
+          console.warn('Could not load store settings from the backend.', error);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
     restoreSession()
       .then((user) => {
         if (!active) return;
         setCurrentUser(user);
         if (user) setCart(readStorage(cartKey(user.id), []));
+        if (!user) setCartHydrated(true);
       })
       .catch(() => {
         if (active) setCurrentUser(null);
@@ -151,6 +180,38 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!authReady || !currentUser || products.length === 0) return;
+
+    let active = true;
+    fetchServerCart()
+      .then((serverCart) => {
+        if (!active) return;
+        setCart((currentCart) => mergeCarts(serverCart, currentCart, products));
+      })
+      .catch((error) => {
+        if (!storeConfig.enableDemoFallback || !isApiUnavailable(error)) {
+          console.warn('Could not load persisted cart from the backend.', error);
+        }
+      })
+      .finally(() => {
+        if (active) setCartHydrated(true);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [authReady, currentUser?.id, products]);
+
+  useEffect(() => {
+    if (!authReady || !currentUser || !cartHydrated || products.length === 0) return;
+    syncServerCart(cart, products).catch((error) => {
+      if (!storeConfig.enableDemoFallback || !isApiUnavailable(error)) {
+        console.warn('Could not persist cart to the backend.', error);
+      }
+    });
+  }, [authReady, currentUser?.id, cartHydrated, cart, products]);
 
   useEffect(() => {
     setCart((oldCart) =>
@@ -192,6 +253,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const guestCart = readStorage<CartItem[]>(cartKey(), []);
       setCurrentUser(user);
       setCart(mergeCarts([], guestCart, products));
+      setCartHydrated(false);
       writeStorage(cartKey(), []);
       return { ok: true, message: 'Cuenta creada correctamente.' };
     } catch (error) {
@@ -206,6 +268,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const guestCart = readStorage<CartItem[]>(cartKey(), []);
       setCurrentUser(user);
       setCart(mergeCarts(ownCart, guestCart, products));
+      setCartHydrated(false);
       writeStorage(cartKey(), []);
       return { ok: true, message: `Bienvenido, ${user.name}.` };
     } catch (error) {
@@ -218,6 +281,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       await logoutAccount();
     } finally {
       setCurrentUser(null);
+      setCartHydrated(true);
       setCart(readStorage(cartKey(), []));
     }
   };
@@ -273,40 +337,68 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return order;
   };
 
-  const addProduct = (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Result => {
+  const addProduct = async (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Promise<Result> => {
     if (products.some((candidate) => candidate.sku.toLowerCase() === product.sku.trim().toLowerCase())) {
       return { ok: false, message: 'El SKU ya existe.' };
     }
 
-    const date = now();
-    setProducts((currentProducts) => [{ ...product, id: uid('product'), createdAt: date, updatedAt: date }, ...currentProducts]);
-    return { ok: true, message: 'Producto creado.' };
+    try {
+      const serverProduct = await createServerProduct(product);
+      setProducts((currentProducts) => [serverProduct, ...currentProducts]);
+      return { ok: true, message: 'Producto creado en el backend.' };
+    } catch (error) {
+      if (!storeConfig.enableDemoFallback || !isApiUnavailable(error)) return { ok: false, message: error instanceof Error ? error.message : 'No se pudo crear el producto.' };
+      const date = now();
+      setProducts((currentProducts) => [{ ...product, id: uid('product'), createdAt: date, updatedAt: date }, ...currentProducts]);
+      return { ok: true, message: 'Producto creado localmente.' };
+    }
   };
 
-  const updateProduct = (product: Product): Result => {
+  const updateProduct = async (product: Product): Promise<Result> => {
     if (products.some((candidate) => candidate.id !== product.id && candidate.sku.toLowerCase() === product.sku.toLowerCase())) {
       return { ok: false, message: 'El SKU ya existe.' };
     }
 
-    setProducts((currentProducts) => currentProducts.map((item) => (item.id === product.id ? { ...product, updatedAt: now() } : item)));
-    return { ok: true, message: 'Producto actualizado.' };
+    try {
+      const serverProduct = await updateServerProduct(product);
+      setProducts((currentProducts) => currentProducts.map((item) => (item.id === product.id ? serverProduct : item)));
+      return { ok: true, message: 'Producto actualizado en el backend.' };
+    } catch (error) {
+      if (!storeConfig.enableDemoFallback || !isApiUnavailable(error)) return { ok: false, message: error instanceof Error ? error.message : 'No se pudo actualizar el producto.' };
+      setProducts((currentProducts) => currentProducts.map((item) => (item.id === product.id ? { ...product, updatedAt: now() } : item)));
+      return { ok: true, message: 'Producto actualizado localmente.' };
+    }
   };
 
-  const deleteProduct = (id: string): Result => {
-    setProducts((currentProducts) => currentProducts.filter((product) => product.id !== id));
-    return { ok: true, message: 'Producto eliminado de catálogo y carritos.' };
+  const deleteProduct = async (id: string): Promise<Result> => {
+    try {
+      await deleteServerProduct(id);
+      setProducts((currentProducts) => currentProducts.filter((product) => product.id !== id));
+      return { ok: true, message: 'Producto archivado en el backend.' };
+    } catch (error) {
+      if (!storeConfig.enableDemoFallback || !isApiUnavailable(error)) return { ok: false, message: error instanceof Error ? error.message : 'No se pudo eliminar el producto.' };
+      setProducts((currentProducts) => currentProducts.filter((product) => product.id !== id));
+      return { ok: true, message: 'Producto eliminado localmente.' };
+    }
   };
 
-  const addCategory = (category: Omit<Category, 'id' | 'createdAt' | 'slug'>): Result => {
+  const addCategory = async (category: Omit<Category, 'id' | 'createdAt' | 'slug'>): Promise<Result> => {
     const name = category.name.trim();
     const slug = slugify(name);
     if (categories.some((candidate) => candidate.slug === slug)) return { ok: false, message: 'La categoría ya existe.' };
 
-    setCategories((currentCategories) => [...currentCategories, { ...category, name, slug, id: uid('cat'), createdAt: now() }]);
-    return { ok: true, message: 'Categoría creada.' };
+    try {
+      const serverCategory = await createServerCategory({ ...category, name });
+      setCategories((currentCategories) => [...currentCategories, serverCategory]);
+      return { ok: true, message: 'Categoría creada en el backend.' };
+    } catch (error) {
+      if (!storeConfig.enableDemoFallback || !isApiUnavailable(error)) return { ok: false, message: error instanceof Error ? error.message : 'No se pudo crear la categoría.' };
+      setCategories((currentCategories) => [...currentCategories, { ...category, name, slug, id: uid('cat'), createdAt: now() }]);
+      return { ok: true, message: 'Categoría creada localmente.' };
+    }
   };
 
-  const updateCategory = (category: Category): Result => {
+  const updateCategory = async (category: Category): Promise<Result> => {
     const currentCategory = categories.find((candidate) => candidate.id === category.id);
     if (!currentCategory) return { ok: false, message: 'Categoría no encontrada.' };
 
@@ -317,7 +409,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
 
     const nextCategory = { ...category, name, slug, description: category.description?.trim() };
-    setCategories((currentCategories) => currentCategories.map((candidate) => (candidate.id === category.id ? nextCategory : candidate)));
+    try {
+      const serverCategory = await updateServerCategory(nextCategory);
+      setCategories((currentCategories) => currentCategories.map((candidate) => (candidate.id === category.id ? serverCategory : candidate)));
+    } catch (error) {
+      if (!storeConfig.enableDemoFallback || !isApiUnavailable(error)) return { ok: false, message: error instanceof Error ? error.message : 'No se pudo actualizar la categoría.' };
+      setCategories((currentCategories) => currentCategories.map((candidate) => (candidate.id === category.id ? nextCategory : candidate)));
+    }
     setProducts((currentProducts) =>
       currentProducts.map((product) =>
         product.categoryId === category.id || product.category === currentCategory.name
@@ -328,14 +426,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return { ok: true, message: 'Categoría actualizada.' };
   };
 
-  const deleteCategory = (id: string): Result => {
+  const deleteCategory = async (id: string): Promise<Result> => {
     const category = categories.find((candidate) => candidate.id === id);
     if (category && products.some((product) => product.category === category.name || product.categoryId === id)) {
       return { ok: false, message: 'No se puede eliminar: tiene productos asignados.' };
     }
 
-    setCategories((currentCategories) => currentCategories.filter((category) => category.id !== id));
-    return { ok: true, message: 'Categoría eliminada.' };
+    try {
+      await deleteServerCategory(id);
+      setCategories((currentCategories) => currentCategories.filter((category) => category.id !== id));
+      return { ok: true, message: 'Categoría eliminada del backend.' };
+    } catch (error) {
+      if (!storeConfig.enableDemoFallback || !isApiUnavailable(error)) return { ok: false, message: error instanceof Error ? error.message : 'No se pudo eliminar la categoría.' };
+      setCategories((currentCategories) => currentCategories.filter((category) => category.id !== id));
+      return { ok: true, message: 'Categoría eliminada localmente.' };
+    }
   };
 
   const updateOrderStatus = async (id: string, status: OrderStatus): Promise<Result> => {
@@ -365,9 +470,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return { ok: true, message: 'Estado de cuenta actualizado.' };
   };
 
-  const updateStoreSettings = (settings: StoreSettings): Result => {
-    setStoreSettings(saveStoreSettings(settings));
-    return { ok: true, message: 'Configuración de tienda actualizada.' };
+  const updateStoreSettings = async (settings: StoreSettings): Promise<Result> => {
+    const normalized = saveStoreSettings(settings);
+    setStoreSettings(normalized);
+    try {
+      const serverSettings = await saveServerSettings(normalized);
+      setStoreSettings(saveStoreSettings(serverSettings));
+      return { ok: true, message: 'Configuración guardada en el backend.' };
+    } catch (error) {
+      if (storeConfig.enableDemoFallback && isApiUnavailable(error)) return { ok: true, message: 'Configuración guardada localmente.' };
+      return { ok: false, message: error instanceof Error ? error.message : 'No se pudo guardar la configuración.' };
+    }
   };
 
   const restoreDefaultStoreSettings = (): Result => {

@@ -23,6 +23,12 @@ Authentication endpoints are available under `/api/v1/auth`: `register`, `login`
 
 Public catalog endpoints are `GET /api/v1/catalog/categories`, `GET /api/v1/catalog/products`, and `GET /api/v1/catalog/products/:id`. The product collection supports search, category slug, price range, featured, availability, sorting, and pagination parameters. The seed command creates a small starter catalog idempotently.
 
+Administrators and catalog managers can manage catalog data through `POST/PATCH/DELETE /api/v1/catalog/admin/products` and `POST/PATCH/DELETE /api/v1/catalog/admin/categories`. Deleted products are archived so historical orders keep their snapshots intact.
+
+Authenticated customers can retrieve and sync their cart with `GET /api/v1/cart` and `PUT /api/v1/cart`. The storefront still keeps a small local cart copy for responsiveness, but production persistence lives in PostgreSQL.
+
+Store identity, contact details, shipping rules, and manual payment instructions are available through `GET /api/v1/settings`. Administrators can persist changes with `PUT /api/v1/settings`.
+
 Authenticated checkout starts with `POST /api/v1/orders`. The client sends variant IDs and quantities; the API calculates prices, tax, shipping, and totals from PostgreSQL/configuration, validates stock, decrements stock, and stores an immutable order snapshot.
 
 Authenticated customers can retrieve their saved order history with `GET /api/v1/orders`. Administrators, fulfillment, and support roles can retrieve all orders with `GET /api/v1/orders/admin` and update fulfillment status with `PATCH /api/v1/orders/:id/status`.

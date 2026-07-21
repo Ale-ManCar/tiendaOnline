@@ -10,6 +10,8 @@ import { AuthGuard } from './auth/auth.guard';
 import { RolesGuard } from './auth/roles.guard';
 import { CatalogModule } from './catalog/catalog.module';
 import { OrdersModule } from './orders/orders.module';
+import { CartModule } from './cart/cart.module';
+import { SettingsModule } from './settings/settings.module';
 
 @Module({
   imports: [
@@ -19,6 +21,8 @@ import { OrdersModule } from './orders/orders.module';
     AuthModule,
     CatalogModule,
     OrdersModule,
+    CartModule,
+    SettingsModule,
   ],
   controllers: [AppController],
   providers: [
