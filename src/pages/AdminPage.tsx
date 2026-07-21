@@ -17,6 +17,8 @@ const tabs = {
   launch: 'Lanzamiento',
 } as const;
 
+const visibleAdminTabs = ['insights', 'products', 'categories', 'orders'] as const;
+
 const LOW_STOCK_THRESHOLD = 5;
 
 export function AdminPage() {
@@ -132,7 +134,7 @@ export function AdminPage() {
           <div>
             <span className="eyebrow">ADMINISTRACIÓN</span>
             <h1>Panel de control</h1>
-            <p>Supervisa catálogo, clientes y pedidos de la tienda.</p>
+            <p>Supervisa catálogo, inventario y pedidos de la tienda.</p>
           </div>
         </div>
 
@@ -168,16 +170,10 @@ export function AdminPage() {
               <strong>{store.orders.length}</strong>
             </span>
           </div>
-          <div>
-            <span>
-              <small>Usuarios</small>
-              <strong>{store.users.length}</strong>
-            </span>
-          </div>
         </div>
 
         <div className="admin-tabs">
-          {(Object.keys(tabs) as Array<keyof typeof tabs>).map((tabKey) => (
+          {visibleAdminTabs.map((tabKey) => (
             <button className={tab === tabKey ? 'active' : ''} onClick={() => setTab(tabKey)} key={tabKey}>
               {tabs[tabKey]}
             </button>
