@@ -16,6 +16,12 @@ const prisma = {
   order: {
     create: jest.fn(),
   },
+  cart: {
+    findUnique: jest.fn(),
+  },
+  cartItem: {
+    deleteMany: jest.fn(),
+  },
   $transaction: jest.fn((callback: unknown) =>
     typeof callback === 'function' ? callback(prisma) : callback,
   ),
@@ -88,6 +94,8 @@ describe('OrdersService', () => {
       },
     ]);
     prisma.productVariant.updateMany.mockResolvedValue({ count: 1 });
+    prisma.cart.findUnique.mockResolvedValue({ id: 'cart-1' });
+    prisma.cartItem.deleteMany.mockResolvedValue({ count: 1 });
     prisma.order.create.mockResolvedValue({
       id: 'order-1',
       status: OrderStatus.PENDING_PAYMENT,
@@ -111,6 +119,9 @@ describe('OrdersService', () => {
         }),
       }),
     );
+    expect(prisma.cartItem.deleteMany).toHaveBeenCalledWith({
+      where: { cartId: 'cart-1' },
+    });
   });
 
   it('rejects unavailable products', async () => {

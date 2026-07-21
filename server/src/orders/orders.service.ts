@@ -110,7 +110,7 @@ export class OrdersService {
           throw new ConflictException('Stock changed while creating the order.');
       }
 
-      return tx.order.create({
+      const order = await tx.order.create({
         data: {
           code,
           userId: user.id,
@@ -154,6 +154,14 @@ export class OrdersService {
         },
         include: orderInclude,
       });
+
+      const userCart = await tx.cart.findUnique({
+        where: { userId: user.id },
+        select: { id: true },
+      });
+      if (userCart) await tx.cartItem.deleteMany({ where: { cartId: userCart.id } });
+
+      return order;
     });
   }
 

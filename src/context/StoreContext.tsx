@@ -382,6 +382,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     );
     setOrders((currentOrders) => [{ ...order, paymentReference: paymentMethod === 'Transferencia' ? paymentReference : undefined }, ...currentOrders]);
     setCart([]);
+    syncServerCart([], products).catch((error) => {
+      if (!storeConfig.enableDemoFallback || !isApiUnavailable(error)) {
+        console.warn('Could not clear persisted cart after creating the order.', error);
+      }
+    });
     loadCatalog().catch((error) => {
       if (!storeConfig.enableDemoFallback || !isApiUnavailable(error)) {
         console.warn('Could not refresh catalog stock after creating the order.', error);
