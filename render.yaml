@@ -5,13 +5,15 @@ services:
     region: oregon
     plan: free
     branch: main
-    buildCommand: cd server && NPM_CONFIG_PRODUCTION=false npm ci && npm run deploy:build
+    buildCommand: cd server && npm ci && npm run deploy:build
     initialDeployHook: cd server && npm run seed:prod
     startCommand: cd server && npm run start:prod
     healthCheckPath: /api/v1/health
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NPM_CONFIG_PRODUCTION
+        value: false
       - key: PORT
         value: 10000
       - key: DATABASE_URL
