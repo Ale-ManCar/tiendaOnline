@@ -6,6 +6,7 @@ services:
     plan: free
     branch: main
     buildCommand: cd server && npm ci --include=dev && npm run deploy:build
+    initialDeployHook: cd server && npm run seed:prod
     startCommand: cd server && npm run start:prod
     healthCheckPath: /api/v1/health
     envVars:

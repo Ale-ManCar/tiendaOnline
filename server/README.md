@@ -63,4 +63,10 @@ Start command:
 cd server && npm run start:prod
 ```
 
+Initial seed command:
+
+```bash
+cd server && npm run seed:prod
+```
+
 Generated Prisma Client files and real environment files are intentionally ignored. Never commit database credentials, session secrets, or payment-provider keys.
