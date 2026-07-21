@@ -1,4 +1,4 @@
-import type { CartItem, Order, OrderItem, PaymentMethod, Product, ShippingData, User } from '../types';
+import type { CartItem, Order, OrderItem, PaymentMethod, PaymentStatus, Product, ShippingData, User } from '../types';
 import { storeConfig } from '../config/storeConfig';
 import { apiRequest } from './apiClient';
 
@@ -18,6 +18,7 @@ export function calculateShippingCost(subtotal: number) {
 }
 
 type ApiPaymentMethod = 'CARD' | 'BANK_TRANSFER' | 'CASH_ON_DELIVERY';
+type ApiPaymentStatus = 'PENDING' | 'AUTHORIZED' | 'PAID' | 'FAILED' | 'CANCELLED' | 'REFUNDED';
 type ApiOrderStatus =
   | 'PENDING_PAYMENT'
   | 'PAID'
@@ -44,7 +45,7 @@ type ApiOrder = {
   shippingTotal?: string | number;
   total: string | number;
   paymentMethod?: ApiPaymentMethod;
-  payments?: { method: ApiPaymentMethod; providerReference?: string | null }[];
+  payments?: { method: ApiPaymentMethod; status: ApiPaymentStatus; providerReference?: string | null }[];
   shippingAddress: ApiShippingAddress;
   status: ApiOrderStatus;
   statusHistory: { status: ApiOrderStatus; createdAt: string }[];
@@ -53,6 +54,10 @@ type ApiOrder = {
 
 const paymentToApi = (method: PaymentMethod): ApiPaymentMethod => (method === 'Tarjeta' ? 'CARD' : method === 'Transferencia' ? 'BANK_TRANSFER' : 'CASH_ON_DELIVERY');
 const paymentFromApi = (method?: ApiPaymentMethod): PaymentMethod => (method === 'CARD' ? 'Tarjeta' : method === 'BANK_TRANSFER' ? 'Transferencia' : 'Contra entrega');
+const paymentStatusToApi = (status: PaymentStatus): ApiPaymentStatus =>
+  status === 'Pagado' ? 'PAID' : status === 'Fallido' ? 'FAILED' : status === 'Reembolsado' ? 'REFUNDED' : 'PENDING';
+const paymentStatusFromApi = (status?: ApiPaymentStatus): PaymentStatus =>
+  status === 'PAID' || status === 'AUTHORIZED' ? 'Pagado' : status === 'FAILED' || status === 'CANCELLED' ? 'Fallido' : status === 'REFUNDED' ? 'Reembolsado' : 'Pendiente';
 const statusToApi = (status: Order['status']): ApiOrderStatus =>
   status === 'Entregado' ? 'DELIVERED' : status === 'Enviado' ? 'SHIPPED' : status === 'Procesando' ? 'PREPARING' : 'PENDING_PAYMENT';
 const statusFromApi = (status: ApiOrderStatus) =>
@@ -92,6 +97,7 @@ export async function createServerOrder(
         reference: shipping.notes,
       },
       paymentMethod: paymentToApi(paymentMethod),
+      paymentReference: paymentReference?.trim() || undefined,
       customerEmail: shipping.email,
       notes,
     }),
@@ -114,6 +120,14 @@ export async function updateServerOrderStatus(orderId: string, status: Order['st
   return mapApiOrder(order, user, products);
 }
 
+export async function updateServerPaymentStatus(orderId: string, paymentStatus: PaymentStatus, user: User, products: Product[]) {
+  const order = await apiRequest<ApiOrder>(`/orders/${encodeURIComponent(orderId)}/payment-status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status: paymentStatusToApi(paymentStatus) }),
+  });
+  return mapApiOrder(order, user, products);
+}
+
 function mapApiOrder(order: ApiOrder, user: User, products: Product[], fallbackPayment: PaymentMethod = 'Contra entrega', paymentReference?: string): Order {
   const items = order.items.map((item) => {
     const product = products.find((candidate) => candidate.id === item.productId);
@@ -130,6 +144,7 @@ function mapApiOrder(order: ApiOrder, user: User, products: Product[], fallbackP
   const tax = Number(order.tax);
   const shippingCost = order.shippingCost === undefined && order.shippingTotal === undefined ? calculated.shippingCost : Number(order.shippingCost ?? order.shippingTotal);
   const paymentMethod = order.paymentMethod ?? order.payments?.[0]?.method;
+  const payment = order.payments?.[0];
 
   return {
     id: order.code ?? order.id,
@@ -143,7 +158,8 @@ function mapApiOrder(order: ApiOrder, user: User, products: Product[], fallbackP
     shippingCost,
     total: Number(order.total),
     paymentMethod: paymentMethod ? paymentFromApi(paymentMethod) : fallbackPayment,
-    paymentReference,
+    paymentStatus: paymentStatusFromApi(payment?.status),
+    paymentReference: paymentReference ?? payment?.providerReference ?? parsePaymentReference(order.notes),
     shipping: {
       fullName: order.shippingAddress.recipientName,
       email: order.customerEmail,
@@ -157,4 +173,9 @@ function mapApiOrder(order: ApiOrder, user: User, products: Product[], fallbackP
     statusHistory: (order.statusHistory ?? []).map((entry) => ({ status: statusFromApi(entry.status), date: entry.createdAt })),
     notes: order.notes,
   };
+}
+
+function parsePaymentReference(notes?: string) {
+  const match = notes?.match(/Payment reference:\s*(.+)/i);
+  return match?.[1]?.trim();
 }

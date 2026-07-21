@@ -77,4 +77,9 @@ export class CreateOrderDto {
   @IsString()
   @Length(0, 1000)
   notes?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(0, 120)
+  paymentReference?: string;
 }

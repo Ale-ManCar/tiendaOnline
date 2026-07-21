@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'rea
 import { Navigate } from 'react-router-dom';
 import { ProductImage } from '../components/ProductImage';
 import { useStore } from '../context/StoreContext';
-import type { Category, Order, OrderStatus, Product } from '../types';
+import type { Category, Order, OrderStatus, PaymentStatus, Product } from '../types';
 import type { StoreSettings } from '../config/storeConfig';
 import { formatMoney, formatShippingCost, getOrderShipping, getOrderTotal } from '../utils/orderDisplay';
 import { categorySchema, productSchema } from '../validation/schemas';
@@ -409,6 +409,7 @@ export function AdminPage() {
                         <td data-label="Total">{formatMoney(order.total)}</td>
                         <td data-label="Pago">
                           {order.paymentMethod}
+                          <small className="block">Pago: {order.paymentStatus}</small>
                           {order.paymentReference && <small className="block">Ref: {order.paymentReference}</small>}
                         </td>
                         <td data-label="Estado">
@@ -571,6 +572,13 @@ export function AdminPage() {
                     }
                   : currentOrder,
               );
+            }
+            setAdminMessage({ type: result.ok ? 'success' : 'error', text: result.message });
+          }}
+          onPaymentStatusChange={async (paymentStatus) => {
+            const result = await store.updatePaymentStatus(selectedOrder.id, paymentStatus);
+            if (result.ok) {
+              setSelectedOrder((currentOrder) => (currentOrder ? { ...currentOrder, paymentStatus } : currentOrder));
             }
             setAdminMessage({ type: result.ok ? 'success' : 'error', text: result.message });
           }}
@@ -1040,11 +1048,13 @@ function OrderDetailModal({
   settings,
   onClose,
   onStatusChange,
+  onPaymentStatusChange,
 }: {
   order: Order;
   settings: StoreSettings;
   onClose: () => void;
   onStatusChange: (status: OrderStatus) => void;
+  onPaymentStatusChange: (status: PaymentStatus) => void;
 }) {
   const shipping = getOrderShipping(order);
   const phoneDigits = shipping.phone.replace(/\D/g, '');
@@ -1065,7 +1075,12 @@ function OrderDetailModal({
             <h2 id="order-detail-title">{order.id}</h2>
             <p>{formatDate(order.createdAt)}</p>
           </div>
-          <span className={`status status-${order.status.toLowerCase()}`}>{order.status}</span>
+          <div className="table-actions inline">
+            <button type="button" onClick={() => copyText(order.id)}>
+              Copiar código
+            </button>
+            <span className={`status status-${order.status.toLowerCase()}`}>{order.status}</span>
+          </div>
         </div>
 
         <div className="admin-order-grid">
@@ -1082,7 +1097,12 @@ function OrderDetailModal({
               </div>
               <div>
                 <dt>Teléfono</dt>
-                <dd>{shipping.phone}</dd>
+                <dd>
+                  {shipping.phone}
+                  <button className="text-button" type="button" onClick={() => copyText(shipping.phone)}>
+                    Copiar
+                  </button>
+                </dd>
               </div>
               <div>
                 <dt>Ciudad</dt>
@@ -1122,7 +1142,19 @@ function OrderDetailModal({
                 <dt>Referencia</dt>
                 <dd>{order.paymentReference || 'Sin referencia'}</dd>
               </div>
+              <div>
+                <dt>Estado de pago</dt>
+                <dd>{order.paymentStatus}</dd>
+              </div>
             </dl>
+            <label className="admin-status-control">
+              Estado de pago
+              <select value={order.paymentStatus} onChange={(event) => onPaymentStatusChange(event.target.value as PaymentStatus)}>
+                {(['Pendiente', 'Pagado', 'Fallido', 'Reembolsado'] as PaymentStatus[]).map((status) => (
+                  <option key={status}>{status}</option>
+                ))}
+              </select>
+            </label>
             <label className="admin-status-control">
               Estado del pedido
               <select value={order.status} onChange={(event) => onStatusChange(event.target.value as OrderStatus)}>
@@ -1183,6 +1215,10 @@ function formatDate(value?: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 'Fecha no registrada';
   return date.toLocaleDateString('es-EC', { day: '2-digit', month: 'long', year: 'numeric' });
+}
+
+function copyText(value: string) {
+  navigator.clipboard?.writeText(value).catch(() => undefined);
 }
 
 function getAdminWhatsAppMessages(order: Order, settings: StoreSettings, shipping: ReturnType<typeof getOrderShipping>, phone: string) {

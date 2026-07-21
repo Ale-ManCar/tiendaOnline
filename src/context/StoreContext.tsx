@@ -1,9 +1,9 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type { CartItem, Category, Order, OrderStatus, PaymentMethod, Product, Result, ShippingData, User } from '../types';
+import type { CartItem, Category, Order, OrderStatus, PaymentMethod, PaymentStatus, Product, Result, ShippingData, User } from '../types';
 import { cartKey, KEYS, readStorage, uid, writeStorage } from '../utils/storage';
 import { loginAccount, logoutAccount, registerAccount, restoreSession } from '../services/authService';
 import { fetchStorefrontCatalog } from '../services/catalogService';
-import { calculateOrder, createServerOrder, fetchServerOrders, updateServerOrderStatus } from '../services/orderService';
+import { calculateOrder, createServerOrder, fetchServerOrders, updateServerOrderStatus, updateServerPaymentStatus } from '../services/orderService';
 import { fetchServerCart, syncServerCart } from '../services/cartService';
 import { fetchServerSettings, saveServerSettings } from '../services/settingsService';
 import {
@@ -66,6 +66,7 @@ interface StoreValue {
   updateCategory: (category: Category) => Promise<Result>;
   deleteCategory: (id: string) => Promise<Result>;
   updateOrderStatus: (id: string, status: OrderStatus) => Promise<Result>;
+  updatePaymentStatus: (id: string, status: PaymentStatus) => Promise<Result>;
   toggleUser: (id: string) => Result;
   updateStoreSettings: (settings: StoreSettings) => Promise<Result>;
   restoreDefaultStoreSettings: () => Result;
@@ -522,6 +523,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const updatePaymentStatus = async (id: string, status: PaymentStatus): Promise<Result> => {
+    const previousOrders = orders;
+    setOrders((currentOrders) => currentOrders.map((order) => (order.id === id ? { ...order, paymentStatus: status } : order)));
+
+    try {
+      if (!currentUser) throw Error('Debes iniciar sesión.');
+      const serverOrder = await updateServerPaymentStatus(id, status, currentUser, products);
+      setOrders((currentOrders) => currentOrders.map((order) => (order.id === id ? serverOrder : order)));
+      return { ok: true, message: 'Estado de pago actualizado.' };
+    } catch (error) {
+      if (storeConfig.enableDemoFallback && isApiUnavailable(error)) return { ok: true, message: 'Estado de pago actualizado localmente.' };
+      setOrders(previousOrders);
+      return { ok: false, message: error instanceof Error ? error.message : 'No se pudo actualizar el pago.' };
+    }
+  };
+
   const toggleUser = (id: string): Result => {
     if (id === admin.id) return { ok: false, message: 'No se puede desactivar al administrador principal.' };
     setUsers((currentUsers) => currentUsers.map((user) => (user.id === id ? { ...user, active: !user.active } : user)));
@@ -604,6 +621,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       updateCategory,
       deleteCategory,
       updateOrderStatus,
+      updatePaymentStatus,
       toggleUser,
       updateStoreSettings,
       restoreDefaultStoreSettings,
@@ -675,6 +693,7 @@ function createLocalOrder(
     shippingCost: totals.shippingCost,
     total: totals.total,
     paymentMethod,
+    paymentStatus: paymentMethod === 'Contra entrega' ? 'Pendiente' : 'Pendiente',
     paymentReference,
     shipping,
     status: 'Pendiente',

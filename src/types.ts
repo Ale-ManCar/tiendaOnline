@@ -41,6 +41,7 @@ export interface CartItem {
 }
 
 export type PaymentMethod = 'Tarjeta' | 'Transferencia' | 'Contra entrega';
+export type PaymentStatus = 'Pendiente' | 'Pagado' | 'Fallido' | 'Reembolsado';
 export type OrderStatus = 'Pendiente' | 'Procesando' | 'Enviado' | 'Entregado';
 
 export interface ShippingData {
@@ -78,6 +79,7 @@ export interface Order {
   shippingCost: number;
   total: number;
   paymentMethod: PaymentMethod;
+  paymentStatus: PaymentStatus;
   paymentReference?: string;
   shipping: ShippingData;
   status: OrderStatus;

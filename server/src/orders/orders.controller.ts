@@ -4,6 +4,7 @@ import type { AuthenticatedUser } from '../auth/auth.types';
 import { Roles } from '../auth/roles.decorator';
 import { UserRole } from '../generated/prisma/enums';
 import { CreateOrderDto } from './dto/create-order.dto';
+import { UpdatePaymentStatusDto } from './dto/update-payment-status.dto';
 import { UpdateOrderStatusDto } from './dto/update-order-status.dto';
 import { OrdersService } from './orders.service';
 
@@ -31,5 +32,11 @@ export class OrdersController {
   @Patch(':id/status')
   updateStatus(@Param('id') id: string, @Body() dto: UpdateOrderStatusDto) {
     return this.orders.updateStatus(id, dto.status);
+  }
+
+  @Roles(UserRole.ADMIN, UserRole.FULFILLMENT, UserRole.SUPPORT)
+  @Patch(':id/payment-status')
+  updatePaymentStatus(@Param('id') id: string, @Body() dto: UpdatePaymentStatusDto) {
+    return this.orders.updatePaymentStatus(id, dto.status);
   }
 }

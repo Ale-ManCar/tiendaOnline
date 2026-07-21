@@ -62,6 +62,53 @@ export class OrdersService {
     });
   }
 
+  async updatePaymentStatus(idOrCode: string, status: PaymentStatus) {
+    const order = await this.prisma.order.findFirst({
+      where: this.orderIdentityWhere(idOrCode),
+      include: { payments: true },
+    });
+    if (!order) throw new NotFoundException('Order not found.');
+
+    const payment = order.payments[0];
+    if (payment) {
+      await this.prisma.payment.update({
+        where: { id: payment.id },
+        data: { status },
+      });
+    } else {
+      await this.prisma.payment.create({
+        data: {
+          orderId: order.id,
+          provider: 'manual',
+          method: PaymentMethod.CASH_ON_DELIVERY,
+          status,
+          amount: order.total,
+          currency: 'USD',
+          idempotencyKey: `${order.code}-MANUAL-PAYMENT`,
+        },
+      });
+    }
+
+    const nextOrderStatus =
+      status === PaymentStatus.PAID && order.status === OrderStatus.PENDING_PAYMENT
+        ? OrderStatus.PAID
+        : status === PaymentStatus.FAILED
+          ? OrderStatus.PAYMENT_FAILED
+          : order.status;
+
+    return this.prisma.order.update({
+      where: { id: order.id },
+      data:
+        nextOrderStatus !== order.status
+          ? {
+              status: nextOrderStatus,
+              statusHistory: { create: { status: nextOrderStatus } },
+            }
+          : {},
+      include: orderInclude,
+    });
+  }
+
   async create(user: AuthenticatedUser, dto: CreateOrderDto) {
     const requestedItems = mergeDuplicateItems(dto.items);
     const variantIds = requestedItems.map((item) => item.variantId);
@@ -143,19 +190,17 @@ export class OrdersService {
           statusHistory: {
             create: { status: OrderStatus.PENDING_PAYMENT },
           },
-          payments:
-            dto.paymentMethod === PaymentMethod.CASH_ON_DELIVERY
-              ? undefined
-              : {
-                  create: {
-                    provider: 'manual',
-                    method: dto.paymentMethod,
-                    status: PaymentStatus.PENDING,
-                    amount: totals.total,
-                    currency: 'USD',
-                    idempotencyKey: `${code}-${dto.paymentMethod}`,
-                  },
-                },
+          payments: {
+            create: {
+              provider: 'manual',
+              providerReference: dto.paymentReference?.trim() || undefined,
+              method: dto.paymentMethod,
+              status: PaymentStatus.PENDING,
+              amount: totals.total,
+              currency: 'USD',
+              idempotencyKey: `${code}-${dto.paymentMethod}`,
+            },
+          },
         },
         include: orderInclude,
       });
