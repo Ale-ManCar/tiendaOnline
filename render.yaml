@@ -5,7 +5,7 @@ services:
     region: oregon
     plan: free
     branch: main
-    buildCommand: cd server && npm ci --production=false && npm run deploy:build
+    buildCommand: cd server && NPM_CONFIG_PRODUCTION=false npm ci && npm run deploy:build
     initialDeployHook: cd server && npm run seed:prod
     startCommand: cd server && npm run start:prod
     healthCheckPath: /api/v1/health
