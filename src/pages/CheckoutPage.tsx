@@ -1,4 +1,4 @@
-import { CheckCircle2, ChevronLeft, CreditCard, LockKeyhole, PackageCheck, Truck } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, CreditCard, LockKeyhole, PackageCheck, ShieldCheck, Truck } from 'lucide-react';
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, Navigate, useNavigate, useOutletContext } from 'react-router-dom';
 import { ProductImage } from '../components/ProductImage';
@@ -33,6 +33,7 @@ export function CheckoutPage() {
   );
   const total = cartSubtotal + tax + shippingCost;
   const remainingForFreeShipping = Math.max(0, storeSettings.freeShippingThreshold - cartSubtotal);
+  const itemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const paymentOptions = useMemo(() => {
     const configured = [
       storeConfig.enableBankTransfer && {
@@ -119,6 +120,30 @@ export function CheckoutPage() {
         <div className="page-intro compact">
           <span className="eyebrow">CHECKOUT</span>
           <h1>Información de entrega</h1>
+          <p>Revisa tus datos antes de registrar el pedido. Stock, precios y envío se validan con el sistema al confirmar.</p>
+        </div>
+        <div className="checkout-assurance" aria-label="Beneficios del checkout">
+          <article>
+            <ShieldCheck size={20} />
+            <span>
+              <strong>Datos protegidos</strong>
+              <small>Tu información se usa solo para gestionar el pedido.</small>
+            </span>
+          </article>
+          <article>
+            <PackageCheck size={20} />
+            <span>
+              <strong>Pedido verificable</strong>
+              <small>Recibirás un código para revisar el estado.</small>
+            </span>
+          </article>
+          <article>
+            <Truck size={20} />
+            <span>
+              <strong>Entrega coordinada</strong>
+              <small>Usaremos tus referencias para evitar retrasos.</small>
+            </span>
+          </article>
         </div>
         <form className="checkout-grid" onSubmit={submit}>
           <div className="checkout-form">
@@ -130,6 +155,7 @@ export function CheckoutPage() {
                   <p>Información necesaria para crear y coordinar el pedido.</p>
                 </div>
               </div>
+              <p className="form-helper">Los campos marcados con * son obligatorios. Revisa especialmente teléfono y dirección.</p>
               <div className="form-grid">
                 <label>
                   Nombre completo *
@@ -149,6 +175,7 @@ export function CheckoutPage() {
                     maxLength={10}
                     placeholder="0990000000"
                   />
+                  <small className="field-hint">Solo números, entre 7 y 10 dígitos.</small>
                 </label>
                 <label>
                   Provincia *
@@ -165,6 +192,7 @@ export function CheckoutPage() {
                     onChange={(event) => setShipping({ ...shipping, address: event.target.value })}
                     placeholder="Calle, número y referencia de entrega"
                   />
+                  <small className="field-hint">Incluye calle, número, sector o una referencia clara.</small>
                 </label>
                 <label className="full-span">
                   Notas del pedido
@@ -196,6 +224,11 @@ export function CheckoutPage() {
                   </small>
                   <small>{storeSettings.shippingCoverageNote}</small>
                 </span>
+              </div>
+              <div className="delivery-preview">
+                <span>Entrega estimada para</span>
+                <strong>{shipping.city || 'Ciudad pendiente'}, {shipping.province || 'Provincia pendiente'}</strong>
+                <small>{shipping.address ? shipping.address : 'Aún falta ingresar la dirección exacta.'}</small>
               </div>
             </section>
 
@@ -242,7 +275,11 @@ export function CheckoutPage() {
             {error && <p className="form-error prominent">{error}</p>}
           </div>
           <aside className="order-summary">
-            <h3>Resumen del pedido</h3>
+            <div className="summary-heading">
+              <span>Tu compra</span>
+              <h3>Resumen del pedido</h3>
+              <small>{itemsCount} {itemsCount === 1 ? 'producto' : 'productos'} en el carrito</small>
+            </div>
             <div className="summary-items">
               {cart.map((item) => {
                 const product = products.find((candidate) => candidate.id === item.productId);
@@ -275,6 +312,11 @@ export function CheckoutPage() {
                 <span>Total</span>
                 <strong>${total.toFixed(2)}</strong>
               </div>
+            </div>
+            <div className="summary-checklist">
+              <span><CheckCircle2 size={15} /> Stock validado al confirmar</span>
+              <span><CheckCircle2 size={15} /> IVA incluido en el total</span>
+              <span><CheckCircle2 size={15} /> Seguimiento disponible por código</span>
             </div>
             <button className="button primary full" type="submit" disabled={placingOrder}>
               {placingOrder ? 'Registrando pedido...' : 'Realizar pedido'}
