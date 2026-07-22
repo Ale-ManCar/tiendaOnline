@@ -140,6 +140,12 @@ export class AuthService {
     dto: RequestPasswordResetDto,
     metadata: RequestMetadata,
   ) {
+    if (!this.mail.isConfigured) {
+      throw new ServiceUnavailableException(
+        'Password recovery email is not configured.',
+      );
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
