@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/auth.types';
+import { Public } from '../auth/public.decorator';
 import { Roles } from '../auth/roles.decorator';
 import { UserRole } from '../generated/prisma/enums';
 import { CreateOrderDto } from './dto/create-order.dto';
@@ -21,6 +22,12 @@ export class OrdersController {
   @Get('admin')
   adminList() {
     return this.orders.findAll();
+  }
+
+  @Public()
+  @Get('track/:code')
+  track(@Param('code') code: string) {
+    return this.orders.findByCode(code);
   }
 
   @Post()

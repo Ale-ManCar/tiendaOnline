@@ -112,6 +112,11 @@ export async function fetchServerOrders(user: User, products: Product[]) {
   return orders.map((order) => mapApiOrder(order, user, products));
 }
 
+export async function fetchTrackedOrder(code: string, products: Product[]) {
+  const order = await apiRequest<ApiOrder>(`/orders/track/${encodeURIComponent(code.trim())}`);
+  return mapApiOrder(order, undefined, products);
+}
+
 export async function updateServerOrderStatus(orderId: string, status: Order['status'], user: User, products: Product[]) {
   const order = await apiRequest<ApiOrder>(`/orders/${encodeURIComponent(orderId)}/status`, {
     method: 'PATCH',
@@ -128,7 +133,7 @@ export async function updateServerPaymentStatus(orderId: string, paymentStatus: 
   return mapApiOrder(order, user, products);
 }
 
-function mapApiOrder(order: ApiOrder, user: User, products: Product[], fallbackPayment: PaymentMethod = 'Contra entrega', paymentReference?: string): Order {
+function mapApiOrder(order: ApiOrder, user: User | undefined, products: Product[], fallbackPayment: PaymentMethod = 'Contra entrega', paymentReference?: string): Order {
   const items = order.items.map((item) => {
     const product = products.find((candidate) => candidate.id === item.productId);
     return {
@@ -148,7 +153,7 @@ function mapApiOrder(order: ApiOrder, user: User, products: Product[], fallbackP
 
   return {
     id: order.code ?? order.id,
-    userId: order.userId ?? user.id,
+    userId: order.userId ?? user?.id ?? '',
     customerName: order.customerName,
     customerEmail: order.customerEmail,
     createdAt: order.createdAt,

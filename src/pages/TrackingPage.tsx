@@ -1,25 +1,60 @@
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { PackageSearch, Search } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
-import type { OrderStatus } from '../types';
+import { fetchTrackedOrder } from '../services/orderService';
+import type { Order, OrderStatus } from '../types';
 import { formatMoney, formatShippingCost, getOrderShipping } from '../utils/orderDisplay';
 
 const statusSteps: OrderStatus[] = ['Pendiente', 'Procesando', 'Enviado', 'Entregado'];
 
 export function TrackingPage() {
-  const { orders } = useStore();
+  const { orders, products } = useStore();
   const [searchParams] = useSearchParams();
   const initialCode = searchParams.get('codigo') ?? '';
   const [query, setQuery] = useState(initialCode);
   const [submittedCode, setSubmittedCode] = useState(initialCode);
+  const [trackedOrder, setTrackedOrder] = useState<Order | null>(null);
+  const [trackingLoading, setTrackingLoading] = useState(false);
+  const [trackingError, setTrackingError] = useState('');
 
-  const order = useMemo(() => {
+  const localOrder = useMemo(() => {
     const normalizedCode = submittedCode.trim().toLowerCase();
     if (!normalizedCode) return null;
     return orders.find((candidate) => candidate.id.toLowerCase() === normalizedCode) ?? null;
   }, [orders, submittedCode]);
 
+  useEffect(() => {
+    const code = submittedCode.trim();
+    if (!code || localOrder) {
+      setTrackedOrder(null);
+      setTrackingLoading(false);
+      setTrackingError('');
+      return;
+    }
+
+    let active = true;
+    setTrackingLoading(true);
+    setTrackingError('');
+    fetchTrackedOrder(code, products)
+      .then((order) => {
+        if (active) setTrackedOrder(order);
+      })
+      .catch((error) => {
+        if (!active) return;
+        setTrackedOrder(null);
+        setTrackingError(error instanceof Error ? error.message : 'No se pudo consultar el pedido.');
+      })
+      .finally(() => {
+        if (active) setTrackingLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [localOrder, products, submittedCode]);
+
+  const order = localOrder ?? trackedOrder;
   const hasSearched = submittedCode.trim().length > 0;
   const shipping = order ? getOrderShipping(order) : null;
   const currentStep = order ? Math.max(0, statusSteps.indexOf(order.status)) : -1;
@@ -60,11 +95,19 @@ export function TrackingPage() {
           </div>
         )}
 
-        {hasSearched && !order && (
+        {trackingLoading && (
+          <div className="tracking-empty">
+            <PackageSearch />
+            <h2>Consultando pedido</h2>
+            <p>Estamos buscando el estado actualizado en el sistema.</p>
+          </div>
+        )}
+
+        {hasSearched && !trackingLoading && !order && (
           <div className="tracking-empty error">
             <PackageSearch />
             <h2>No encontramos ese pedido</h2>
-            <p>Revisa que el código esté escrito exactamente igual. En esta versión, solo se pueden rastrear pedidos guardados en este navegador.</p>
+            <p>{trackingError || 'Revisa que el código esté escrito exactamente igual o inicia sesión con la cuenta usada para comprar.'}</p>
             <Link className="button secondary" to="/catalogo">
               Volver al catálogo
             </Link>

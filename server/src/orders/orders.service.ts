@@ -45,6 +45,15 @@ export class OrdersService {
     });
   }
 
+  async findByCode(code: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { code: code.trim().toUpperCase() },
+      include: orderInclude,
+    });
+    if (!order) throw new NotFoundException('Order not found.');
+    return order;
+  }
+
   async updateStatus(idOrCode: string, status: OrderStatus) {
     const order = await this.prisma.order.findFirst({
       where: this.orderIdentityWhere(idOrCode),
