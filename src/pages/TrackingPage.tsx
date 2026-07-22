@@ -1,5 +1,5 @@
 import { FormEvent, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { PackageSearch, Search } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import type { OrderStatus } from '../types';
@@ -9,8 +9,10 @@ const statusSteps: OrderStatus[] = ['Pendiente', 'Procesando', 'Enviado', 'Entre
 
 export function TrackingPage() {
   const { orders } = useStore();
-  const [query, setQuery] = useState('');
-  const [submittedCode, setSubmittedCode] = useState('');
+  const [searchParams] = useSearchParams();
+  const initialCode = searchParams.get('codigo') ?? '';
+  const [query, setQuery] = useState(initialCode);
+  const [submittedCode, setSubmittedCode] = useState(initialCode);
 
   const order = useMemo(() => {
     const normalizedCode = submittedCode.trim().toLowerCase();

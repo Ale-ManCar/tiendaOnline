@@ -140,7 +140,7 @@ export function OrdersPage() {
                           <MessageCircle size={15} /> WhatsApp
                         </a>
                       )}
-                      <Link className="button secondary small" to="/rastreo">
+                      <Link className="button secondary small" to={`/rastreo?codigo=${encodeURIComponent(order.id)}`}>
                         Rastrear pedido
                       </Link>
                     </div>
