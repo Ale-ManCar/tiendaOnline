@@ -50,7 +50,7 @@ export const storeConfig = {
     'El pago con tarjeta requiere un proveedor de pagos conectado para operar en producción.',
   ),
   demoAdminEmail: value('VITE_DEMO_ADMIN_EMAIL', 'admin@tienda.com').toLowerCase(),
-  enableDemoFallback: booleanValue('VITE_ENABLE_DEMO_FALLBACK', true),
+  enableDemoFallback: booleanValue('VITE_ENABLE_DEMO_FALLBACK', !import.meta.env.PROD),
 };
 
 export type StoreSettings = Pick<

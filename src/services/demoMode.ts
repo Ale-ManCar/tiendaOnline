@@ -32,12 +32,11 @@ export function registerDemoUser(name: string, email: string, password: string) 
   if (users.some((user) => user.email === normalizedEmail)) {
     throw new Error('An account with this email already exists.');
   }
-  const role: User['role'] = normalizedEmail === 'admin@tienda.com' ? 'admin' : 'customer';
   const user: DemoUser = {
     id: uid('demo-user'),
     name: name.trim(),
     email: normalizedEmail,
-    role,
+    role: 'customer',
     active: true,
     createdAt: now(),
     passwordHash: hashPassword(normalizeDemoPassword(password)),

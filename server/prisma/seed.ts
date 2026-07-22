@@ -79,8 +79,8 @@ const defaultSettings={
   legalName:'Nova Store',
   shortName:'NOVA',
   logoLetter:'N',
-  announcement:'Envio gratis en compras superiores a $100 · Compra segura',
-  tagline:'Productos utiles, diseño contemporaneo y una experiencia de compra simple.',
+  announcement:'Envío gratis en compras superiores a $100 · Compra segura',
+  tagline:'Productos útiles, diseño contemporáneo y una experiencia de compra simple.',
   supportEmail:'alemancar0511@gmail.com',
   supportPhone:'0968822603',
   location:'Guayaquil, Ecuador',
@@ -89,8 +89,8 @@ const defaultSettings={
   defaultCheckoutCity:'Guayaquil',
   shippingFlatRate:5,
   freeShippingThreshold:100,
-  shippingCoverageNote:'Entrega disponible segun cobertura del negocio.',
+  shippingCoverageNote:'Entrega disponible según cobertura del negocio.',
   bankAccountLabel:'Cuenta bancaria por definir',
-  bankTransferInstructions:'Realiza la transferencia y escribe el numero de comprobante para que el equipo pueda validar tu pedido.',
-  cashOnDeliveryInstructions:'Paga al recibir tu pedido. El equipo confirmara disponibilidad y zona de cobertura antes del envio.'
+  bankTransferInstructions:'Realiza la transferencia y escribe el número de comprobante para que el equipo pueda validar tu pedido.',
+  cashOnDeliveryInstructions:'Paga al recibir tu pedido. El equipo confirmará disponibilidad y zona de cobertura antes del envío.'
 };
