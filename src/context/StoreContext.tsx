@@ -193,9 +193,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (!authReady || !currentUser || products.length === 0) return;
 
     let active = true;
+    const hydrationFallback = window.setTimeout(() => {
+      if (active) setCartHydrated(true);
+    }, 5000);
+
     fetchServerCart()
       .then((serverCart) => {
         if (!active) return;
+        if (syncingCartRef.current) return;
         const guestCart = pendingGuestCartRef.current;
         pendingGuestCartRef.current = [];
         const nextCart = guestCart.length ? mergeCarts(serverCart, guestCart, products) : normalizeCart(serverCart, products);
@@ -207,11 +212,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }
       })
       .finally(() => {
+        window.clearTimeout(hydrationFallback);
         if (active) setCartHydrated(true);
       });
 
     return () => {
       active = false;
+      window.clearTimeout(hydrationFallback);
     };
   }, [authReady, currentUser?.id, products]);
 
