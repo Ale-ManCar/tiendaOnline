@@ -33,6 +33,7 @@ export function AdminPage() {
   const [adminMessage, setAdminMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [orderSearch, setOrderSearch] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState<'Todos' | OrderStatus>('Todos');
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<'Todos' | PaymentStatus>('Todos');
   const [revenueMonth, setRevenueMonth] = useState(getCurrentMonthKey);
   const [productSearch, setProductSearch] = useState('');
   const [productCategoryFilter, setProductCategoryFilter] = useState('Todas');
@@ -64,6 +65,7 @@ export function AdminPage() {
       const shipping = getOrderShipping(order);
       const matchesMonth = getMonthKey(order.createdAt) === revenueMonth;
       const matchesStatus = orderStatusFilter === 'Todos' || order.status === orderStatusFilter;
+      const matchesPaymentStatus = paymentStatusFilter === 'Todos' || order.paymentStatus === paymentStatusFilter;
       const matchesSearch =
         !search ||
         [
@@ -74,6 +76,7 @@ export function AdminPage() {
           shipping.city,
           shipping.address,
           order.paymentMethod,
+          order.paymentStatus,
           order.paymentReference ?? '',
           order.status,
         ]
@@ -81,9 +84,9 @@ export function AdminPage() {
           .toLowerCase()
           .includes(search);
 
-      return matchesMonth && matchesStatus && matchesSearch;
+      return matchesMonth && matchesStatus && matchesPaymentStatus && matchesSearch;
     });
-  }, [orderSearch, orderStatusFilter, revenueMonth, store.orders]);
+  }, [orderSearch, orderStatusFilter, paymentStatusFilter, revenueMonth, store.orders]);
 
   const closeProductForm = () => {
     setEditingProduct(null);
@@ -106,6 +109,7 @@ export function AdminPage() {
       buildOrderReportHtml(visibleOrders, store.storeSettings, {
         search: orderSearch,
         status: orderStatusFilter,
+        paymentStatus: paymentStatusFilter,
         monthLabel: revenuePeriodLabel,
       }),
     );
@@ -402,10 +406,19 @@ export function AdminPage() {
                     </select>
                   </label>
                   <label>
-                    Estado
+                    Estado del pedido
                     <select value={orderStatusFilter} onChange={(event) => setOrderStatusFilter(event.target.value as 'Todos' | OrderStatus)}>
                       <option>Todos</option>
                       {(['Pendiente', 'Procesando', 'Enviado', 'Entregado'] as OrderStatus[]).map((status) => (
+                        <option key={status}>{status}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
+                    Estado de pago
+                    <select value={paymentStatusFilter} onChange={(event) => setPaymentStatusFilter(event.target.value as 'Todos' | PaymentStatus)}>
+                      <option>Todos</option>
+                      {(['Pendiente', 'Pagado', 'Fallido', 'Reembolsado'] as PaymentStatus[]).map((status) => (
                         <option key={status}>{status}</option>
                       ))}
                     </select>
@@ -818,7 +831,11 @@ function escapeHtml(value: unknown) {
     .replace(/'/g, '&#039;');
 }
 
-function buildOrderReportHtml(orders: Order[], settings: StoreSettings, filters: { search: string; status: 'Todos' | OrderStatus; monthLabel: string }) {
+function buildOrderReportHtml(
+  orders: Order[],
+  settings: StoreSettings,
+  filters: { search: string; status: 'Todos' | OrderStatus; paymentStatus: 'Todos' | PaymentStatus; monthLabel: string },
+) {
   const revenue = orders.reduce((sum, order) => sum + getOrderTotal(order), 0);
   const subtotal = orders.reduce((sum, order) => sum + (order.subtotal ?? 0), 0);
   const tax = orders.reduce((sum, order) => sum + (order.tax ?? 0), 0);
@@ -826,7 +843,8 @@ function buildOrderReportHtml(orders: Order[], settings: StoreSettings, filters:
   const generatedAt = new Date().toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' });
   const filterText = [
     `Periodo: ${filters.monthLabel}`,
-    filters.status !== 'Todos' ? `Estado: ${filters.status}` : 'Todos los estados',
+    filters.status !== 'Todos' ? `Pedido: ${filters.status}` : 'Todos los pedidos',
+    filters.paymentStatus !== 'Todos' ? `Pago: ${filters.paymentStatus}` : 'Todos los pagos',
     filters.search.trim() ? `Búsqueda: ${filters.search.trim()}` : 'Sin búsqueda',
   ].join(' · ');
 
