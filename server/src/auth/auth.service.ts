@@ -19,6 +19,9 @@ import type {
   RequestMetadata,
   TokenPayload,
 } from './auth.types';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { RequestPasswordResetDto } from './dto/request-password-reset.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Injectable()
 export class AuthService {
@@ -131,6 +134,99 @@ export class AuthService {
 
     await this.audit(user.id, 'auth.email_verified', metadata);
     return { user: this.publicUser(user) };
+  }
+
+  async requestPasswordReset(
+    dto: RequestPasswordResetDto,
+    metadata: RequestMetadata,
+  ) {
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email },
+    });
+
+    if (!user || user.status !== AccountStatus.ACTIVE) return;
+
+    await this.prisma.passwordResetToken.updateMany({
+      where: { userId: user.id, consumedAt: null },
+      data: { consumedAt: new Date() },
+    });
+
+    const token = await this.createPasswordResetToken(user.id);
+    await this.sendPasswordResetEmail(user, token);
+    await this.audit(user.id, 'auth.password_reset_requested', metadata);
+  }
+
+  async resetPassword(dto: ResetPasswordDto, metadata: RequestMetadata) {
+    const tokenHash = this.hashVerificationToken(dto.token);
+    const resetToken = await this.prisma.passwordResetToken.findFirst({
+      where: {
+        tokenHash,
+        consumedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      include: { user: true },
+    });
+
+    if (!resetToken)
+      throw new UnauthorizedException('Reset link is invalid or expired.');
+    if (resetToken.user.status !== AccountStatus.ACTIVE)
+      throw new UnauthorizedException('This account is not active.');
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.passwordResetToken.update({
+        where: { id: resetToken.id },
+        data: { consumedAt: new Date() },
+      });
+      await tx.user.update({
+        where: { id: resetToken.userId },
+        data: {
+          passwordHash: await argon2.hash(dto.password, {
+            type: argon2.argon2id,
+          }),
+        },
+      });
+      await tx.refreshSession.updateMany({
+        where: { userId: resetToken.userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    });
+
+    await this.sendPasswordChangedEmail(resetToken.user);
+    await this.audit(resetToken.userId, 'auth.password_reset_completed', metadata);
+  }
+
+  async changePassword(
+    userId: string,
+    dto: ChangePasswordDto,
+    metadata: RequestMetadata,
+  ) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.status !== AccountStatus.ACTIVE)
+      throw new UnauthorizedException('Authentication required.');
+    if (!(await argon2.verify(user.passwordHash, dto.currentPassword)))
+      throw new UnauthorizedException('Current password is incorrect.');
+    if (dto.currentPassword === dto.newPassword)
+      throw new UnauthorizedException(
+        'New password must be different from the current password.',
+      );
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          passwordHash: await argon2.hash(dto.newPassword, {
+            type: argon2.argon2id,
+          }),
+        },
+      });
+      await tx.refreshSession.updateMany({
+        where: { userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    });
+
+    await this.sendPasswordChangedEmail(user);
+    await this.audit(userId, 'auth.password_changed', metadata);
   }
 
   async refresh(token: string | undefined, metadata: RequestMetadata) {
@@ -258,6 +354,18 @@ export class AuthService {
     return token;
   }
 
+  private async createPasswordResetToken(userId: string) {
+    const token = randomBytes(32).toString('base64url');
+    await this.prisma.passwordResetToken.create({
+      data: {
+        userId,
+        tokenHash: this.hashVerificationToken(token),
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      },
+    });
+    return token;
+  }
+
   private async sendVerificationEmail(
     user: { name: string; email: string },
     token: string,
@@ -277,6 +385,45 @@ export class AuthService {
           <p>Hola ${escapeHtml(user.name)}, confirma tu correo para activar tu cuenta en Nova Store.</p>
           <p><a href="${link}" style="background:#ff563f;color:white;padding:12px 18px;border-radius:10px;text-decoration:none">Verificar cuenta</a></p>
           <p>Este enlace vence en 24 horas.</p>
+        </div>
+      `,
+    });
+  }
+
+  private async sendPasswordResetEmail(
+    user: { name: string; email: string },
+    token: string,
+  ) {
+    const publicUrl = this.config
+      .get<string>('APP_PUBLIC_URL', 'http://localhost:5173')
+      .replace(/\/$/, '');
+    const link = `${publicUrl}/#/restablecer-password?token=${encodeURIComponent(token)}`;
+
+    await this.mail.send({
+      to: user.email,
+      subject: 'Restablece tu contraseña en Nova Store',
+      text: `Hola ${user.name}, restablece tu contraseña abriendo este enlace: ${link}. Este enlace vence en 1 hora.`,
+      html: `
+        <div style="font-family:Arial,sans-serif;line-height:1.5;color:#17181d">
+          <h2>Restablece tu contraseña</h2>
+          <p>Hola ${escapeHtml(user.name)}, recibimos una solicitud para cambiar la contraseña de tu cuenta.</p>
+          <p><a href="${link}" style="background:#ff563f;color:white;padding:12px 18px;border-radius:10px;text-decoration:none">Cambiar contraseña</a></p>
+          <p>Este enlace vence en 1 hora. Si no solicitaste este cambio, puedes ignorar este correo.</p>
+        </div>
+      `,
+    });
+  }
+
+  private async sendPasswordChangedEmail(user: { name: string; email: string }) {
+    await this.mail.send({
+      to: user.email,
+      subject: 'Tu contraseña fue actualizada',
+      text: `Hola ${user.name}, te confirmamos que la contraseña de tu cuenta fue actualizada. Si no realizaste este cambio, contacta al soporte de la tienda.`,
+      html: `
+        <div style="font-family:Arial,sans-serif;line-height:1.5;color:#17181d">
+          <h2>Contraseña actualizada</h2>
+          <p>Hola ${escapeHtml(user.name)}, la contraseña de tu cuenta fue actualizada correctamente.</p>
+          <p>Si no realizaste este cambio, contacta al soporte de la tienda de inmediato.</p>
         </div>
       `,
     });

@@ -11,6 +11,9 @@ const request = (path:string,body?:unknown) => apiRequest<AuthResponse>(path,{me
 export async function registerAccount(name:string,email:string,password:string){try{const response=await request('/auth/register',{name,email,password});return {user:mapUser(response.user),verificationRequired: Boolean(response.verificationRequired)}}catch(error){if(storeConfig.enableDemoFallback&&isApiUnavailable(error))return {user:registerDemoUser(name,email,password),verificationRequired:false};throw error}}
 export async function loginAccount(email:string,password:string){try{return mapUser((await request('/auth/login',{email,password})).user)}catch(error){if(storeConfig.enableDemoFallback&&isApiUnavailable(error))return loginDemoUser(email,password);throw error}}
 export async function verifyEmailAccount(token:string){return mapUser((await request('/auth/verify-email',{token})).user)}
+export async function requestPasswordReset(email:string){await apiRequest<{message:string}>('/auth/password/forgot',{method:'POST',body:JSON.stringify({email})})}
+export async function resetPasswordAccount(token:string,password:string){await apiRequest<{message:string}>('/auth/password/reset',{method:'POST',body:JSON.stringify({token,password})})}
+export async function changePasswordAccount(currentPassword:string,newPassword:string){await apiRequest<{message:string}>('/auth/password/change',{method:'POST',body:JSON.stringify({currentPassword,newPassword})})}
 export async function restoreSession(){
   try{return mapUser((await apiRequest<AuthResponse>('/auth/me')).user)}catch(error){
     if(storeConfig.enableDemoFallback&&isApiUnavailable(error))return restoreDemoSession();

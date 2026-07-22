@@ -19,6 +19,8 @@ Backend:
 - `CORS_ORIGINS`: comma-separated allowed frontend origins.
 - `ADMIN_EMAIL`: first administrator email used by the seed command.
 - `ADMIN_PASSWORD`: strong administrator password used by the seed command.
+- `APP_PUBLIC_URL`: public storefront URL used in email verification and password reset links.
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`: SMTP settings for account verification, password recovery, password-change alerts, and order notifications.
 
 Frontend:
 
@@ -31,7 +33,7 @@ In GitHub Actions, set `VITE_API_URL` as a repository variable when a hosted API
 1. Create a Neon PostgreSQL project.
 2. Copy the pooled PostgreSQL connection string. It must include SSL, usually `sslmode=require`.
 3. Create the Render web service from this repository. The included `render.yaml` configures the API build, start command, and health check.
-4. In Render, set `DATABASE_URL`, `SESSION_SECRET`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD`.
+4. In Render, set `DATABASE_URL`, `SESSION_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `APP_PUBLIC_URL`, and the SMTP variables.
 5. Deploy the Render service. Its build command runs Prisma generate, migrations, and the NestJS build.
 6. Seed the database once with `npm run seed` using the same `DATABASE_URL`.
 7. Set the GitHub Actions repository variable `VITE_API_URL` to the Render API URL including `/api/v1`, for example `https://nova-store-api.onrender.com/api/v1`.

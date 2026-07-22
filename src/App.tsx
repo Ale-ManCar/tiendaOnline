@@ -14,6 +14,7 @@ import { ProductDetailPage } from './pages/ProductDetailPage';
 import { TrackingPage } from './pages/TrackingPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 
 export default function App() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
             <Route path="/legal/:policy" element={<LegalPage />} />
             <Route path="/rastreo" element={<TrackingPage />} />
             <Route path="/verificar-email" element={<EmailVerificationPage />} />
+            <Route path="/restablecer-password" element={<ResetPasswordPage />} />
             <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>} />
             <Route path="/confirmacion/:id" element={<ProtectedRoute><ConfirmationPage /></ProtectedRoute>} />
             <Route path="/pedidos" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />

@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from 'react';
 import { Eye, EyeOff, X } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
+import { requestPasswordReset } from '../services/authService';
 import type { ToastState } from './Toast';
 
-type AuthMode = 'login' | 'register';
+type AuthMode = 'login' | 'register' | 'forgot';
 
 export function AuthModal({
   open,
@@ -28,6 +29,20 @@ export function AuthModal({
     setError('');
 
     if (!form.email.includes('@')) return setError('Ingresa un correo válido.');
+
+    if (mode === 'forgot') {
+      setSubmitting(true);
+      try {
+        await requestPasswordReset(form.email);
+        notify({ message: 'Si el correo está registrado, enviaremos instrucciones para restablecer la contraseña.', type: 'success' });
+        onClose();
+      } catch {
+        setError('No pudimos procesar la solicitud. Intenta nuevamente en unos minutos.');
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
 
     if (mode === 'register') {
       if (form.name.trim().length < 3) return setError('Ingresa tu nombre completo.');
@@ -70,8 +85,14 @@ export function AuthModal({
 
         <div className="auth-head">
           <span className="eyebrow">{storeSettings.name.toUpperCase()}</span>
-          <h2 id="auth-title">{mode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}</h2>
-          <p>{mode === 'login' ? 'Accede para consultar tus pedidos y continuar tu compra.' : 'Regístrate para guardar tu carrito e historial de pedidos.'}</p>
+          <h2 id="auth-title">{mode === 'login' ? 'Iniciar sesión' : mode === 'register' ? 'Crear cuenta' : 'Recuperar contraseña'}</h2>
+          <p>
+            {mode === 'login'
+              ? 'Accede para consultar tus pedidos y continuar tu compra.'
+              : mode === 'register'
+                ? 'Regístrate para guardar tu carrito e historial de pedidos.'
+                : 'Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.'}
+          </p>
         </div>
 
         <form onSubmit={submit} className="form-stack">
@@ -87,21 +108,23 @@ export function AuthModal({
             <input required type="email" autoComplete="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
           </label>
 
-          <label>
-            Contraseña
-            <div className="password-field">
-              <input
-                required
-                type={showPassword ? 'text' : 'password'}
-                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                value={form.password}
-                onChange={(event) => setForm({ ...form, password: event.target.value })}
-              />
-              <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}>
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
-            </div>
-          </label>
+          {mode !== 'forgot' && (
+            <label>
+              Contraseña
+              <div className="password-field">
+                <input
+                  required
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                  value={form.password}
+                  onChange={(event) => setForm({ ...form, password: event.target.value })}
+                />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}>
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </label>
+          )}
 
           {mode === 'register' && (
             <label>
@@ -123,9 +146,15 @@ export function AuthModal({
           )}
 
           <button className="button primary full" type="submit" disabled={submitting}>
-            {submitting ? 'Procesando…' : mode === 'login' ? 'Ingresar' : 'Crear cuenta'}
+            {submitting ? 'Procesando…' : mode === 'login' ? 'Ingresar' : mode === 'register' ? 'Crear cuenta' : 'Enviar enlace'}
           </button>
         </form>
+
+        {mode === 'login' && (
+          <button className="text-button" disabled={submitting} onClick={() => { setMode('forgot'); setError(''); }}>
+            ¿Olvidaste tu contraseña?
+          </button>
+        )}
 
         <button className="text-button" disabled={submitting} onClick={switchMode}>
           {mode === 'login' ? '¿No tienes cuenta? Regístrate' : '¿Ya tienes cuenta? Inicia sesión'}

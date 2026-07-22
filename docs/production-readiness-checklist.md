@@ -21,7 +21,9 @@ If an item is not complete, the store can still be shown as a preview, but it sh
 - [ ] Logout works.
 - [ ] Suspended users cannot log in.
 - [ ] Session cookies are secure in production.
-- [ ] Password recovery plan exists.
+- [ ] Password recovery emails are configured and tested.
+- [ ] Logged-in users can change their password.
+- [ ] Password-change alert emails are delivered.
 
 ## 3. Catalog and inventory
 
@@ -108,4 +110,3 @@ The store is production-ready only if:
 - Customer can complete checkout.
 - Orders persist across devices.
 - Client accepts final test.
-

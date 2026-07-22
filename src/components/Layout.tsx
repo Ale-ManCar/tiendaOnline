@@ -4,12 +4,14 @@ import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useStore } from '../context/StoreContext';
 import { AuthModal } from './AuthModal';
 import { CartDrawer } from './CartDrawer';
+import { ChangePasswordModal } from './ChangePasswordModal';
 import { Toast, type ToastState } from './Toast';
 
 export function Layout() {
   const { currentUser, cartCount, logout, storeSettings } = useStore();
   const [authOpen, setAuthOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [search, setSearch] = useState('');
@@ -92,6 +94,15 @@ export function Layout() {
                   <button
                     role="menuitem"
                     onClick={() => {
+                      setChangePasswordOpen(true);
+                      closeNavigation();
+                    }}
+                  >
+                    Cambiar contraseña
+                  </button>
+                  <button
+                    role="menuitem"
+                    onClick={() => {
                       logout();
                       closeNavigation();
                       setToast({ message: 'Sesión cerrada.', type: 'success' });
@@ -120,6 +131,7 @@ export function Layout() {
         <div className="container footer-bottom"><span>© 2026 {storeSettings.name}</span><span>{storeSettings.footerNote}</span></div>
       </footer>
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} notify={setToast} />
+      <ChangePasswordModal open={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} notify={setToast} />
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
       <Toast toast={toast} onClose={() => setToast(null)} />
     </div>

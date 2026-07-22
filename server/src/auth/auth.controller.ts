@@ -17,8 +17,11 @@ import {
 } from './auth.cookies';
 import type { AuthenticatedUser, RequestMetadata } from './auth.types';
 import { CurrentUser } from './current-user.decorator';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { RequestPasswordResetDto } from './dto/request-password-reset.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { Public } from './public.decorator';
 
@@ -64,6 +67,41 @@ export class AuthController {
     const result = await this.auth.login(dto, metadata(request));
     setAuthCookies(response, result.access, result.refresh);
     return { user: result.user };
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 8, ttl: 60_000 } })
+  @HttpCode(200)
+  @Post('password/forgot')
+  async requestPasswordReset(
+    @Body() dto: RequestPasswordResetDto,
+    @Req() request: Request,
+  ) {
+    await this.auth.requestPasswordReset(dto, metadata(request));
+    return {
+      message:
+        'If an account exists for this email, password recovery instructions were sent.',
+    };
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @HttpCode(200)
+  @Post('password/reset')
+  async resetPassword(@Body() dto: ResetPasswordDto, @Req() request: Request) {
+    await this.auth.resetPassword(dto, metadata(request));
+    return { message: 'Password changed successfully.' };
+  }
+
+  @HttpCode(200)
+  @Post('password/change')
+  async changePassword(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: ChangePasswordDto,
+    @Req() request: Request,
+  ) {
+    await this.auth.changePassword(user.id, dto, metadata(request));
+    return { message: 'Password changed successfully.' };
   }
 
   @Public()

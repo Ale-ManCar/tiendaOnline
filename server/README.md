@@ -19,7 +19,7 @@ For local development, you may also use the same Neon database or another Postgr
 
 The health endpoint is `GET http://localhost:3000/api/v1/health`.
 
-Authentication endpoints are available under `/api/v1/auth`: `register`, `login`, `refresh`, `logout`, `logout-all`, and `me`. Authentication tokens are delivered only through HTTP-only cookies. Refresh tokens are rotated and stored only as Argon2id hashes.
+Authentication endpoints are available under `/api/v1/auth`: `register`, `login`, `refresh`, `logout`, `logout-all`, `me`, `password/forgot`, `password/reset`, and `password/change`. Authentication tokens are delivered only through HTTP-only cookies. Refresh tokens are rotated and stored only as Argon2id hashes. Password reset links are one-time tokens stored as hashes and expire after 1 hour.
 
 Public catalog endpoints are `GET /api/v1/catalog/categories`, `GET /api/v1/catalog/products`, and `GET /api/v1/catalog/products/:id`. The product collection supports search, category slug, price range, featured, availability, sorting, and pagination parameters. The seed command creates a small starter catalog idempotently.
 
@@ -48,6 +48,8 @@ The root `render.yaml` defines the API web service. Use it from Render as a Blue
 - `DATABASE_URL`: Neon pooled PostgreSQL connection string.
 - `ADMIN_EMAIL`: first administrator email for the client.
 - `ADMIN_PASSWORD`: first administrator password for the client.
+- `APP_PUBLIC_URL`: public storefront URL used in verification and password recovery emails.
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM`: email delivery settings. Use an app password for Gmail/Outlook-style accounts when required by the provider.
 
 Use `AUTH_COOKIE_SAME_SITE=none` when the frontend and backend are on different sites, for example GitHub Pages plus `onrender.com`. Use `lax` when the final client setup uses the same main domain, such as `clientdomain.com` and `api.clientdomain.com`.
 
