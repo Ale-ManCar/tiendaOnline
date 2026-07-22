@@ -10,22 +10,24 @@ export function HomePage() {
   const { products, addToCart } = useStore();
   const { notify } = useOutletContext<OutletContext>();
   const featured = products.filter((product) => product.active && product.featured).slice(0, 6);
-  const categories = [
-    { name: 'Tecnología', image: 'https://images.unsplash.com/photo-1498049794561-7780e7231661?auto=format&fit=crop&w=900&q=80' },
-    { name: 'Hogar', image: 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=900&q=80' },
-    { name: 'Moda', image: 'https://images.unsplash.com/photo-1445205170230-053b83016050?auto=format&fit=crop&w=900&q=80' },
-  ];
+  const categories = Array.from(new Set(products.filter((product) => product.active).map((product) => product.category)))
+    .slice(0, 3)
+    .map((name) => ({ name, image: getCategoryImage(name) }));
 
   const handleAdd = (id: string) => {
     const result = addToCart(id);
     notify({ message: result.message, type: result.ok ? 'success' : 'error' });
   };
 
+  const scrollToFeatured = () => {
+    document.getElementById('destacados')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   return (
     <>
       <section className="hero">
         <div className="container hero-grid">
-          <div className="hero-copy"><span className="eyebrow">NUEVA COLECCIÓN 2026</span><h1>Diseño que encaja con tu forma de vivir.</h1><p>Descubre tecnología, hogar, moda y bienestar seleccionados para tu día a día.</p><div className="hero-actions"><Link className="button primary" to="/catalogo">Explorar catálogo <ArrowRight size={18} /></Link><a className="button secondary" href="#destacados">Ver destacados</a></div><div className="hero-stats"><div><strong>+12</strong><span>productos</span></div><div><strong>24/7</strong><span>disponibilidad</span></div><div><strong>100%</strong><span>responsive</span></div></div></div>
+          <div className="hero-copy"><span className="eyebrow">NUEVA COLECCIÓN 2026</span><h1>Diseño que encaja con tu forma de vivir.</h1><p>Descubre tecnología, hogar, moda y bienestar seleccionados para tu día a día.</p><div className="hero-actions"><Link className="button primary" to="/catalogo">Explorar catálogo <ArrowRight size={18} /></Link><button className="button secondary" type="button" onClick={scrollToFeatured}>Ver destacados</button></div><div className="hero-stats"><div><strong>+12</strong><span>productos</span></div><div><strong>24/7</strong><span>disponibilidad</span></div><div><strong>100%</strong><span>responsive</span></div></div></div>
           <div className="hero-visual"><img src="https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=1200&q=85" alt="Sala moderna con productos de diseño" /><div className="floating-card"><span>Oferta destacada</span><strong>Hasta 20% de descuento</strong><Link to="/catalogo">Comprar ahora <ArrowRight size={15} /></Link></div></div>
         </div>
       </section>
@@ -39,4 +41,14 @@ export function HomePage() {
       <section className="section"><div className="container promo-banner"><div><span className="eyebrow light-text">COMPRA INTELIGENTE</span><h2>Todo lo que necesitas en un solo lugar.</h2><p>Agrega productos al carrito, calcula el total y completa tu pedido en pocos pasos.</p><Link className="button light-button" to="/catalogo">Empezar a comprar <ArrowRight size={18} /></Link></div><img src="https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=1000&q=80" alt="Tienda moderna" /></div></section>
     </>
   );
+}
+
+function getCategoryImage(category: string) {
+  const normalized = category.toLowerCase();
+  if (normalized.includes('tech') || normalized.includes('tecn')) return 'https://images.unsplash.com/photo-1498049794561-7780e7231661?auto=format&fit=crop&w=900&q=80';
+  if (normalized.includes('home') || normalized.includes('hogar')) return 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=900&q=80';
+  if (normalized.includes('fashion') || normalized.includes('moda')) return 'https://images.unsplash.com/photo-1445205170230-053b83016050?auto=format&fit=crop&w=900&q=80';
+  if (normalized.includes('access')) return 'https://images.unsplash.com/photo-1627123424574-724758594e93?auto=format&fit=crop&w=900&q=80';
+  if (normalized.includes('wellness')) return 'https://images.unsplash.com/photo-1518611012118-696072aa579a?auto=format&fit=crop&w=900&q=80';
+  return 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?auto=format&fit=crop&w=900&q=80';
 }

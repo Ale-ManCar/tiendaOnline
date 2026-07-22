@@ -20,6 +20,15 @@ export function CatalogPage() {
   const categories = ['Todas', ...Array.from(new Set(visibleProducts.map((product) => product.category)))];
   const hasActiveFilters = Boolean(search || category !== 'Todas' || sort !== 'featured' || maxPrice !== 150);
 
+  const updateFilterParams = (updates: Record<string, string>) => {
+    const next = new URLSearchParams(params);
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value) next.set(key, value);
+      else next.delete(key);
+    });
+    setParams(next, { replace: true });
+  };
+
   useEffect(() => {
     const syncFiltersForViewport = () => {
       if (window.innerWidth > 560) setFiltersOpen(true);
@@ -28,6 +37,11 @@ export function CatalogPage() {
     window.addEventListener('resize', syncFiltersForViewport);
     return () => window.removeEventListener('resize', syncFiltersForViewport);
   }, []);
+
+  useEffect(() => {
+    setSearch(params.get('q') ?? '');
+    setCategory(params.get('categoria') ?? 'Todas');
+  }, [params]);
 
   const filtered = useMemo(() => {
     const normalized = search.toLowerCase().trim();
@@ -75,8 +89,8 @@ export function CatalogPage() {
               <button className="text-button" onClick={clearFilters}>Limpiar</button>
             </div>
             <div className="filters-content">
-              <label>Buscar<div className="input-icon"><Search size={17} /><input value={search} onChange={(event) => { setSearch(event.target.value); setParams(event.target.value ? { q: event.target.value } : {}); }} placeholder="Nombre o categoría" /></div></label>
-              <label>Categoría<select value={category} onChange={(event) => setCategory(event.target.value)}>{categories.map((item) => <option key={item}>{item}</option>)}</select></label>
+              <label>Buscar<div className="input-icon"><Search size={17} /><input value={search} onChange={(event) => { const value = event.target.value; setSearch(value); updateFilterParams({ q: value }); }} placeholder="Nombre o categoría" /></div></label>
+              <label>Categoría<select value={category} onChange={(event) => { const value = event.target.value; setCategory(value); updateFilterParams({ categoria: value === 'Todas' ? '' : value }); }}>{categories.map((item) => <option key={item}>{item}</option>)}</select></label>
               <label>Precio máximo <strong>${maxPrice}</strong><input type="range" min="20" max="150" step="5" value={maxPrice} onChange={(event) => setMaxPrice(Number(event.target.value))} /></label>
               <label>Ordenar<select value={sort} onChange={(event) => setSort(event.target.value)}><option value="featured">Destacados</option><option value="price-asc">Precio: menor a mayor</option><option value="price-desc">Precio: mayor a menor</option><option value="name">Nombre A–Z</option></select></label>
             </div>
