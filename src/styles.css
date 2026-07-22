@@ -369,6 +369,12 @@ textarea { padding-top: 12px !important; min-height: 95px !important; resize: ve
 .admin-page { padding: 60px 0 90px; background: #f4f4f1; min-height: 80vh; }
 .admin-heading h1 { font-size: 52px; letter-spacing: -.05em; margin-bottom: 8px; }
 .admin-heading p { color: var(--muted); }
+.admin-period-filter { display: flex; align-items: flex-end; justify-content: space-between; gap: 18px; margin: 24px 0 6px; padding: 18px; border: 1px solid var(--line); border-radius: 20px; background: white; }
+.admin-period-filter > div { display: grid; gap: 4px; }
+.admin-period-filter strong { font-family: 'Manrope'; font-size: 24px; letter-spacing: -.035em; text-transform: capitalize; }
+.admin-period-filter p { margin: 0; color: var(--muted); }
+.admin-period-filter label { min-width: 240px; display: flex; flex-direction: column; gap: 7px; color: #45474d; font-size: 12px; font-weight: 900; }
+.admin-period-filter select { min-height: 46px; border: 1px solid var(--line); border-radius: 13px; padding: 0 12px; background: #fbfbf9; font: inherit; font-weight: 800; text-transform: capitalize; }
 .admin-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 15px; margin: 30px 0; }
 .admin-stats > div, .admin-stat-button { background: white; border: 1px solid var(--line); border-radius: 17px; padding: 20px; display: flex; gap: 14px; align-items: center; text-align: left; }
 .admin-stat-button { color: var(--ink); transition: transform .18s, border .18s, background .18s; }
@@ -628,6 +634,8 @@ td { padding: 13px 10px; border-bottom: 1px solid var(--line); font-size: 13px; 
   .legal-contact-card { padding: 20px; align-items: flex-start; }
   .legal-note { align-items: flex-start; }
   .admin-stats { grid-template-columns: 1fr; }
+  .admin-period-filter { align-items: stretch; flex-direction: column; }
+  .admin-period-filter label { min-width: 0; }
   .admin-page { overflow-x: hidden; }
   .admin-card { padding: 18px 14px; overflow: hidden; }
   .admin-tabs { margin-inline: -12px; padding: 0 12px 6px; }

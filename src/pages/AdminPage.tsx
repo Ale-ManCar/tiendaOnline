@@ -33,6 +33,7 @@ export function AdminPage() {
   const [adminMessage, setAdminMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [orderSearch, setOrderSearch] = useState('');
   const [orderStatusFilter, setOrderStatusFilter] = useState<'Todos' | OrderStatus>('Todos');
+  const [revenueMonth, setRevenueMonth] = useState(getCurrentMonthKey);
   const [productSearch, setProductSearch] = useState('');
   const [productCategoryFilter, setProductCategoryFilter] = useState('Todas');
   const backupInputRef = useRef<HTMLInputElement>(null);
@@ -42,6 +43,10 @@ export function AdminPage() {
   const activeProducts = store.products.filter((product) => product.active);
   const lowStockProducts = activeProducts.filter((product) => product.stock > 0 && product.stock <= LOW_STOCK_THRESHOLD);
   const outOfStockProducts = activeProducts.filter((product) => product.stock === 0);
+  const availableRevenueMonths = useMemo(() => getAvailableRevenueMonths(store.orders), [store.orders]);
+  const monthlyOrders = useMemo(() => getOrdersByMonth(store.orders, revenueMonth), [revenueMonth, store.orders]);
+  const monthlyInsights = getSalesInsights(monthlyOrders);
+  const revenuePeriodLabel = formatMonthLabel(revenueMonth);
   const visibleProducts = useMemo(() => {
     const search = productSearch.trim().toLowerCase();
 
@@ -52,7 +57,6 @@ export function AdminPage() {
       return matchesLowStock && matchesCategory && matchesSearch;
     });
   }, [productCategoryFilter, productSearch, showLowStockOnly, store.products]);
-  const insights = getSalesInsights(store.orders);
   const visibleOrders = useMemo(() => {
     const search = orderSearch.trim().toLowerCase();
 
@@ -138,11 +142,29 @@ export function AdminPage() {
           </div>
         </div>
 
+        <div className="admin-period-filter">
+          <div>
+            <span className="eyebrow">PERIODO COMERCIAL</span>
+            <strong>{revenuePeriodLabel}</strong>
+            <p>El resumen muestra ingresos, pedidos y rendimiento del mes seleccionado.</p>
+          </div>
+          <label>
+            Filtrar mes
+            <select value={revenueMonth} onChange={(event) => setRevenueMonth(event.target.value)}>
+              {availableRevenueMonths.map((month) => (
+                <option key={month} value={month}>
+                  {formatMonthLabel(month)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
         <div className="admin-stats">
           <div>
             <span>
-              <small>Ingresos</small>
-              <strong>{formatMoney(store.orders.reduce((amount, order) => amount + getOrderTotal(order), 0))}</strong>
+              <small>Ingresos del mes</small>
+              <strong>{formatMoney(monthlyInsights.revenue)}</strong>
             </span>
           </div>
           <div>
@@ -166,8 +188,8 @@ export function AdminPage() {
           </button>
           <div>
             <span>
-              <small>Pedidos</small>
-              <strong>{store.orders.length}</strong>
+              <small>Pedidos del mes</small>
+              <strong>{monthlyOrders.length}</strong>
             </span>
           </div>
         </div>
@@ -184,7 +206,7 @@ export function AdminPage() {
 
         <div className="admin-card">
           <div className="table-wrap">
-            {tab === 'insights' && <SalesInsightsPanel insights={insights} orders={store.orders} />}
+            {tab === 'insights' && <SalesInsightsPanel insights={monthlyInsights} orders={monthlyOrders} periodLabel={revenuePeriodLabel} />}
 
             {tab === 'products' && (
               <>
@@ -593,21 +615,21 @@ type CategoryFormData = Omit<Category, 'id' | 'createdAt' | 'slug'>;
 
 type SalesInsights = ReturnType<typeof getSalesInsights>;
 
-function SalesInsightsPanel({ insights, orders }: { insights: SalesInsights; orders: Order[] }) {
+function SalesInsightsPanel({ insights, orders, periodLabel }: { insights: SalesInsights; orders: Order[]; periodLabel: string }) {
   return (
     <section className="sales-insights">
       <div className="admin-toolbar">
         <div>
           <h2>Resumen comercial</h2>
-          <p>Una lectura rápida del rendimiento actual de la tienda y los pedidos recientes.</p>
+          <p>Rendimiento de {periodLabel}: ingresos, pedidos y productos más vendidos.</p>
         </div>
       </div>
 
       <div className="insight-grid">
         <article>
-          <small>Ingresos totales</small>
+          <small>Ingresos del periodo</small>
           <strong>{formatMoney(insights.revenue)}</strong>
-          <span>{orders.length} pedidos registrados</span>
+          <span>{orders.length} pedidos en {periodLabel}</span>
         </article>
         <article>
           <small>Ticket promedio</small>
@@ -663,7 +685,7 @@ function SalesInsightsPanel({ insights, orders }: { insights: SalesInsights; ord
       </div>
 
       <article className="insight-card">
-        <h3>Pedidos recientes</h3>
+        <h3>Pedidos del periodo</h3>
         {insights.recentOrders.length ? (
           <div className="recent-orders">
             {insights.recentOrders.map((order) => {
@@ -687,6 +709,39 @@ function SalesInsightsPanel({ insights, orders }: { insights: SalesInsights; ord
       </article>
     </section>
   );
+}
+
+function getCurrentMonthKey(): string {
+  return getMonthKey(new Date());
+}
+
+function getMonthKey(value: string | Date): string {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    const currentDate = new Date();
+    return `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+  }
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function getAvailableRevenueMonths(orders: Order[]) {
+  const months = new Set<string>([getCurrentMonthKey()]);
+
+  orders.forEach((order) => {
+    if (order.createdAt) months.add(getMonthKey(order.createdAt));
+  });
+
+  return [...months].sort((first, second) => second.localeCompare(first));
+}
+
+function getOrdersByMonth(orders: Order[], month: string) {
+  return orders.filter((order) => getMonthKey(order.createdAt) === month);
+}
+
+function formatMonthLabel(month: string) {
+  const [year, monthNumber] = month.split('-').map(Number);
+  if (!year || !monthNumber) return 'Mes seleccionado';
+  return new Date(year, monthNumber - 1, 1).toLocaleDateString('es-EC', { month: 'long', year: 'numeric' });
 }
 
 function getSalesInsights(orders: Order[]) {
