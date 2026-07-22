@@ -3,17 +3,31 @@ const DEFAULT_API_URL = import.meta.env.PROD
   : 'http://localhost:3000/api/v1';
 
 const API_URL = (import.meta.env.VITE_API_URL || DEFAULT_API_URL).replace(/\/$/, '');
+const REQUEST_TIMEOUT_MS = 15000;
 
 export class ApiError extends Error {
   constructor(message: string, public readonly status: number) { super(message); }
 }
 
 export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, {
-    ...init,
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
-  });
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      ...init,
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json', ...init?.headers },
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
+      throw new ApiError('The server is taking too long to respond. Try again in a moment.', 408);
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeout);
+  }
   if (!response.ok) {
     const body = await response.json().catch(() => null) as { message?: string | string[] } | null;
     const message = Array.isArray(body?.message) ? body.message.join(' ') : body?.message;

@@ -336,6 +336,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const addToCart = (id: string, quantity = 1): Result => {
+    if (currentUser && !cartHydrated) return { ok: false, message: 'Estamos sincronizando tu carrito. Intenta nuevamente en un momento.' };
     const product = products.find((candidate) => candidate.id === id && candidate.active);
     if (!product || product.stock < 1) return { ok: false, message: 'Producto no disponible.' };
 
@@ -353,6 +354,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const updateCartQuantity = (id: string, quantity: number): Result => {
+    if (currentUser && !cartHydrated) return { ok: false, message: 'Estamos sincronizando tu carrito. Intenta nuevamente en un momento.' };
     const product = products.find((candidate) => candidate.id === id);
     if (!product || !Number.isInteger(quantity) || quantity < 1 || quantity > product.stock) {
       return { ok: false, message: `Cantidad válida: 1 a ${product?.stock ?? 0}.` };
@@ -360,6 +362,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     setCart((currentCart) => currentCart.map((item) => (item.productId === id ? { ...item, quantity } : item)));
     return { ok: true, message: 'Cantidad actualizada.' };
+  };
+
+  const removeFromCart = (id: string) => {
+    if (currentUser && !cartHydrated) return;
+    setCart((currentCart) => currentCart.filter((item) => item.productId !== id));
+  };
+
+  const clearCart = () => {
+    if (currentUser && !cartHydrated) return;
+    setCart([]);
   };
 
   const createOrder = async (shipping: ShippingData, paymentMethod: PaymentMethod, paymentReference?: string) => {
@@ -611,8 +623,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       logout,
       addToCart,
       updateCartQuantity,
-      removeFromCart: (id: string) => setCart((currentCart) => currentCart.filter((item) => item.productId !== id)),
-      clearCart: () => setCart([]),
+      removeFromCart,
+      clearCart,
       createOrder,
       addProduct,
       updateProduct,

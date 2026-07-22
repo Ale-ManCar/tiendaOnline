@@ -21,10 +21,15 @@ export function AuthModal({ open, onClose, notify }: { open:boolean; onClose:()=
       if(form.password!==form.confirmPassword)return setError('Passwords do not match.');
     }
     setSubmitting(true);
-    const result=mode==='register'?await register(form.name,form.email,form.password):await login(form.email,form.password);
-    setSubmitting(false);
-    if(!result.ok)return setError(result.message);
-    notify({message:result.message,type:'success'});onClose();
+    try {
+      const result=mode==='register'?await register(form.name,form.email,form.password):await login(form.email,form.password);
+      if(!result.ok)return setError(result.message);
+      notify({message:result.message,type:'success'});onClose();
+    } catch {
+      setError('The server did not respond. Try again in a moment.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return <div className="modal-backdrop" onMouseDown={onClose}><section className="auth-modal" onMouseDown={e=>e.stopPropagation()} aria-modal="true" role="dialog" aria-labelledby="auth-title"><button className="icon-button modal-close" onClick={onClose} aria-label="Close"><X/></button><div className="auth-head"><span className="eyebrow">{storeSettings.name.toUpperCase()}</span><h2 id="auth-title">{mode==='login'?'Welcome back':'Create your account'}</h2><p>{mode==='login'?'Sign in to continue shopping.':'Register to save your cart and orders.'}</p></div><form onSubmit={submit} className="form-stack">
