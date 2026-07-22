@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const fallbackImage =
   'data:image/svg+xml;utf8,' +
@@ -22,6 +22,10 @@ type ProductImageProps = {
 
 export function ProductImage({ src, alt, className, loading = 'lazy' }: ProductImageProps) {
   const [imageSrc, setImageSrc] = useState(src || fallbackImage);
+
+  useEffect(() => {
+    setImageSrc(src || fallbackImage);
+  }, [src]);
 
   return (
     <img

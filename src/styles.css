@@ -343,9 +343,9 @@ textarea { padding-top: 12px !important; min-height: 95px !important; resize: ve
 .legal-contact-card span { display: flex; flex-direction: column; gap: 4px; }
 .legal-contact-card small { color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-weight: 800; }
 .legal-contact-card strong { font-family: 'Manrope'; }
-.legal-note { margin-top: 22px; padding: 18px 20px; border-radius: 18px; background: #fff8f5; border: 1px solid #ffd7cc; display: flex; gap: 12px; color: #7a3a27; }
+.legal-note { margin-top: 22px; padding: 18px 20px; border-radius: 18px; background: #f7f6f1; border: 1px solid var(--line); display: flex; gap: 12px; color: var(--muted); }
 .legal-note p { margin: 0; line-height: 1.6; font-size: 14px; }
-.legal-note svg { flex: 0 0 auto; color: var(--accent); }
+.legal-note svg { flex: 0 0 auto; color: var(--green); }
 .legal-links { margin-top: 18px; display: flex; flex-wrap: wrap; gap: 10px; }
 .legal-links a { padding: 10px 13px; border-radius: 999px; background: white; border: 1px solid var(--line); color: var(--muted); font-weight: 800; font-size: 13px; }
 .legal-links a:hover { color: var(--ink); border-color: var(--accent); }

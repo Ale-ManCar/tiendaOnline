@@ -144,8 +144,8 @@ export function LegalPage() {
         <div className="legal-note">
           <ShieldCheck size={20} />
           <p>
-            Esta información es una base comercial editable para cada cliente. Para operaciones reguladas o condiciones especiales,
-            conviene revisarla con asesoría legal local antes de publicar.
+            Estas políticas sirven como referencia operativa para la tienda y pueden ajustarse según las condiciones comerciales de cada negocio.
+            Para casos especiales, el equipo responsable puede actualizarlas antes de la publicación final.
           </p>
         </div>
 

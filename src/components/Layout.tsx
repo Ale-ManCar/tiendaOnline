@@ -113,7 +113,7 @@ export function Layout() {
       <footer className="site-footer">
         <div className="container footer-grid">
           <div><Link to="/" className="brand light"><span>{storeSettings.logoLetter}</span> {storeSettings.shortName}</Link><p>{storeSettings.tagline}</p></div>
-          <div><h4>Navegación</h4><Link to="/">Inicio</Link><Link to="/catalogo">Catálogo</Link><Link to="/rastreo">Rastrear pedido</Link><Link to="/pedidos">Mis pedidos</Link></div>
+          <div><h4>Navegación</h4><Link to="/">Inicio</Link><Link to="/catalogo">Catálogo</Link><Link to="/pedidos">Mis pedidos</Link></div>
           <div><h4>Ayuda</h4><Link to="/legal/contacto">Contacto</Link><a href={`mailto:${storeSettings.supportEmail}`}>{storeSettings.supportEmail}</a><span>{storeSettings.location}</span><span>{storeSettings.businessHours}</span></div>
           <div><h4>Legal</h4><Link to="/legal/terminos">Términos y condiciones</Link><Link to="/legal/privacidad">Privacidad</Link><Link to="/legal/devoluciones">Devoluciones</Link><Link to="/legal/envios">Envíos</Link></div>
         </div>
