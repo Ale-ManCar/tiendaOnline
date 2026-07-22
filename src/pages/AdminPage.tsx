@@ -148,7 +148,7 @@ export function AdminPage() {
           <div>
             <span className="eyebrow">PERIODO COMERCIAL</span>
             <strong>{revenuePeriodLabel}</strong>
-            <p>El resumen muestra ingresos, pedidos y rendimiento del mes seleccionado.</p>
+            <p>Consulta las ventas y pedidos registrados para este periodo.</p>
           </div>
           <label>
             Filtrar mes
@@ -633,7 +633,7 @@ function SalesInsightsPanel({ insights, orders, periodLabel }: { insights: Sales
       <div className="admin-toolbar">
         <div>
           <h2>Resumen comercial</h2>
-          <p>Rendimiento de {periodLabel}: ingresos, pedidos y productos más vendidos.</p>
+          <p>Indicadores comerciales correspondientes a {periodLabel}.</p>
         </div>
       </div>
 
