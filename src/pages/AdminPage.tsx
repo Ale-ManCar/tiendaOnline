@@ -1059,6 +1059,7 @@ function OrderDetailModal({
   const shipping = getOrderShipping(order);
   const phoneDigits = shipping.phone.replace(/\D/g, '');
   const whatsappPhone = phoneDigits.startsWith('593') ? phoneDigits : phoneDigits.replace(/^0/, '593');
+  const phoneWhatsAppUrl = whatsappPhone ? `https://wa.me/${whatsappPhone}` : '';
   const whatsappMessages = phoneDigits ? getAdminWhatsAppMessages(order, settings, shipping, whatsappPhone) : [];
   const history = order.statusHistory?.length ? order.statusHistory : [{ status: order.status, date: order.createdAt }];
 
@@ -1075,12 +1076,7 @@ function OrderDetailModal({
             <h2 id="order-detail-title">{order.id}</h2>
             <p>{formatDate(order.createdAt)}</p>
           </div>
-          <div className="table-actions inline">
-            <button type="button" onClick={() => copyText(order.id)}>
-              Copiar código
-            </button>
-            <span className={`status status-${order.status.toLowerCase()}`}>{order.status}</span>
-          </div>
+          <span className={`status status-${order.status.toLowerCase()}`}>{order.status}</span>
         </div>
 
         <div className="admin-order-grid">
@@ -1098,10 +1094,13 @@ function OrderDetailModal({
               <div>
                 <dt>Teléfono</dt>
                 <dd>
-                  {shipping.phone}
-                  <button className="text-button" type="button" onClick={() => copyText(shipping.phone)}>
-                    Copiar
-                  </button>
+                  {phoneWhatsAppUrl ? (
+                    <a className="admin-phone-link" href={phoneWhatsAppUrl} target="_blank" rel="noreferrer">
+                      {shipping.phone}
+                    </a>
+                  ) : (
+                    shipping.phone
+                  )}
                 </dd>
               </div>
               <div>
@@ -1215,10 +1214,6 @@ function formatDate(value?: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 'Fecha no registrada';
   return date.toLocaleDateString('es-EC', { day: '2-digit', month: 'long', year: 'numeric' });
-}
-
-function copyText(value: string) {
-  navigator.clipboard?.writeText(value).catch(() => undefined);
 }
 
 function getAdminWhatsAppMessages(order: Order, settings: StoreSettings, shipping: ReturnType<typeof getOrderShipping>, phone: string) {

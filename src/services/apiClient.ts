@@ -1,4 +1,8 @@
-const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1').replace(/\/$/, '');
+const DEFAULT_API_URL = import.meta.env.PROD
+  ? 'https://nova-store-api.onrender.com/api/v1'
+  : 'http://localhost:3000/api/v1';
+
+const API_URL = (import.meta.env.VITE_API_URL || DEFAULT_API_URL).replace(/\/$/, '');
 
 export class ApiError extends Error {
   constructor(message: string, public readonly status: number) { super(message); }
