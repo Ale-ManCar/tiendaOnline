@@ -62,6 +62,7 @@ export function AdminPage() {
 
     return store.orders.filter((order) => {
       const shipping = getOrderShipping(order);
+      const matchesMonth = getMonthKey(order.createdAt) === revenueMonth;
       const matchesStatus = orderStatusFilter === 'Todos' || order.status === orderStatusFilter;
       const matchesSearch =
         !search ||
@@ -80,9 +81,9 @@ export function AdminPage() {
           .toLowerCase()
           .includes(search);
 
-      return matchesStatus && matchesSearch;
+      return matchesMonth && matchesStatus && matchesSearch;
     });
-  }, [orderSearch, orderStatusFilter, store.orders]);
+  }, [orderSearch, orderStatusFilter, revenueMonth, store.orders]);
 
   const closeProductForm = () => {
     setEditingProduct(null);
@@ -105,6 +106,7 @@ export function AdminPage() {
       buildOrderReportHtml(visibleOrders, store.storeSettings, {
         search: orderSearch,
         status: orderStatusFilter,
+        monthLabel: revenuePeriodLabel,
       }),
     );
     setAdminMessage({ type: 'success', text: 'Reporte de pedidos exportado.' });
@@ -390,6 +392,16 @@ export function AdminPage() {
                     />
                   </label>
                   <label>
+                    Mes
+                    <select value={revenueMonth} onChange={(event) => setRevenueMonth(event.target.value)}>
+                      {availableRevenueMonths.map((month) => (
+                        <option key={month} value={month}>
+                          {formatMonthLabel(month)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label>
                     Estado
                     <select value={orderStatusFilter} onChange={(event) => setOrderStatusFilter(event.target.value as 'Todos' | OrderStatus)}>
                       <option>Todos</option>
@@ -398,7 +410,7 @@ export function AdminPage() {
                       ))}
                     </select>
                   </label>
-                  <span>{visibleOrders.length} de {store.orders.length} pedidos</span>
+                  <span>{visibleOrders.length} pedidos · {revenuePeriodLabel}</span>
                 </div>
 
                 <table>
@@ -806,13 +818,14 @@ function escapeHtml(value: unknown) {
     .replace(/'/g, '&#039;');
 }
 
-function buildOrderReportHtml(orders: Order[], settings: StoreSettings, filters: { search: string; status: 'Todos' | OrderStatus }) {
+function buildOrderReportHtml(orders: Order[], settings: StoreSettings, filters: { search: string; status: 'Todos' | OrderStatus; monthLabel: string }) {
   const revenue = orders.reduce((sum, order) => sum + getOrderTotal(order), 0);
   const subtotal = orders.reduce((sum, order) => sum + (order.subtotal ?? 0), 0);
   const tax = orders.reduce((sum, order) => sum + (order.tax ?? 0), 0);
   const shipping = orders.reduce((sum, order) => sum + (order.shippingCost ?? 0), 0);
   const generatedAt = new Date().toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' });
   const filterText = [
+    `Periodo: ${filters.monthLabel}`,
     filters.status !== 'Todos' ? `Estado: ${filters.status}` : 'Todos los estados',
     filters.search.trim() ? `Búsqueda: ${filters.search.trim()}` : 'Sin búsqueda',
   ].join(' · ');
