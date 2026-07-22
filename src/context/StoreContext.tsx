@@ -343,7 +343,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const addToCart = (id: string, quantity = 1): Result => {
-    if (currentUser && !cartHydrated) return { ok: false, message: 'Estamos sincronizando tu carrito. Intenta nuevamente en un momento.' };
     const product = products.find((candidate) => candidate.id === id && candidate.active);
     if (!product || product.stock < 1) return { ok: false, message: 'Producto no disponible.' };
 
@@ -362,7 +361,6 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const updateCartQuantity = (id: string, quantity: number): Result => {
-    if (currentUser && !cartHydrated) return { ok: false, message: 'Estamos sincronizando tu carrito. Intenta nuevamente en un momento.' };
     const product = products.find((candidate) => candidate.id === id);
     if (!product || !Number.isInteger(quantity) || quantity < 1 || quantity > product.stock) {
       return { ok: false, message: `Cantidad válida: 1 a ${product?.stock ?? 0}.` };
@@ -374,13 +372,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   };
 
   const removeFromCart = (id: string) => {
-    if (currentUser && !cartHydrated) return;
     if (currentUser) syncingCartRef.current = true;
     setCart((currentCart) => currentCart.filter((item) => item.productId !== id));
   };
 
   const clearCart = () => {
-    if (currentUser && !cartHydrated) return;
     if (currentUser) syncingCartRef.current = true;
     setCart([]);
   };
