@@ -1,5 +1,4 @@
-import { Copy, MessageCircle, PackageOpen } from 'lucide-react';
-import { useState } from 'react';
+import { MessageCircle, PackageOpen } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
 import { ProductImage } from '../components/ProductImage';
 import { useStore } from '../context/StoreContext';
@@ -10,22 +9,12 @@ const statusSteps: OrderStatus[] = ['Pendiente', 'Procesando', 'Enviado', 'Entre
 
 export function OrdersPage() {
   const { currentUser, orders, storeSettings } = useStore();
-  const [copiedOrderId, setCopiedOrderId] = useState('');
 
   if (!currentUser) return <Navigate to="/" replace />;
 
   const userOrders = orders.filter((order) => order.userId === currentUser.id);
   const supportPhoneDigits = storeSettings.supportPhone.replace(/\D/g, '');
   const whatsappPhone = supportPhoneDigits.startsWith('593') ? supportPhoneDigits : supportPhoneDigits.replace(/^0/, '593');
-
-  const copyOrderCode = async (orderId: string) => {
-    try {
-      await navigator.clipboard.writeText(orderId);
-      setCopiedOrderId(orderId);
-    } catch {
-      setCopiedOrderId(orderId);
-    }
-  };
 
   return (
     <section className="section orders-page">
@@ -122,7 +111,6 @@ export function OrdersPage() {
 
                   <footer>
                     <div>
-                      {copiedOrderId === order.id && <span className="order-copy-feedback">Código copiado</span>}
                       <span>
                         <strong>Pago:</strong> {order.paymentMethod}
                         {order.paymentReference ? ` · Ref: ${order.paymentReference}` : ''}
@@ -132,9 +120,6 @@ export function OrdersPage() {
                       </span>
                     </div>
                     <div className="order-card-actions">
-                      <button className="button secondary small" type="button" onClick={() => copyOrderCode(order.id)}>
-                        <Copy size={15} /> Copiar código
-                      </button>
                       {whatsappUrl && (
                         <a className="button secondary small" href={whatsappUrl} target="_blank" rel="noreferrer">
                           <MessageCircle size={15} /> WhatsApp

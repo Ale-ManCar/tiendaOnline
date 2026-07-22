@@ -17,6 +17,7 @@ export function TrackingPage() {
   const [trackedOrder, setTrackedOrder] = useState<Order | null>(null);
   const [trackingLoading, setTrackingLoading] = useState(false);
   const [trackingError, setTrackingError] = useState('');
+  const isDirectTracking = Boolean(initialCode.trim());
 
   const localOrder = useMemo(() => {
     const normalizedCode = submittedCode.trim().toLowerCase();
@@ -63,6 +64,7 @@ export function TrackingPage() {
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSubmittedCode(query);
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
   };
 
   return (
@@ -74,17 +76,24 @@ export function TrackingPage() {
           <p>Ingresa el código de compra para consultar el estado, el pago y los datos principales de entrega.</p>
         </div>
 
-        <form className="tracking-search" onSubmit={submit}>
+        <form className={isDirectTracking ? 'tracking-search tracking-search-direct' : 'tracking-search'} onSubmit={submit}>
           <label>
             Código de pedido
             <span>
               <Search size={18} />
-              <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Ej: NV-E4992EOAE768" />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Ej: NV-E4992EOAE768"
+                readOnly={isDirectTracking}
+              />
             </span>
           </label>
-          <button className="button primary" type="submit">
-            Consultar
-          </button>
+          {!isDirectTracking && (
+            <button className="button primary" type="submit">
+              Consultar
+            </button>
+          )}
         </form>
 
         {!hasSearched && (

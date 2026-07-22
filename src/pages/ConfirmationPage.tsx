@@ -1,5 +1,4 @@
-import { CheckCircle2, Copy, MessageCircle, Package, ShoppingBag } from 'lucide-react';
-import { useState } from 'react';
+import { CheckCircle2, MessageCircle, Package, ShoppingBag } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { useStore } from '../context/StoreContext';
 import { formatMoney, formatShippingCost, getOrderShipping } from '../utils/orderDisplay';
@@ -7,7 +6,6 @@ import { formatMoney, formatShippingCost, getOrderShipping } from '../utils/orde
 export function ConfirmationPage() {
   const { id } = useParams();
   const { orders, currentUser, storeSettings } = useStore();
-  const [copyMessage, setCopyMessage] = useState('');
   const order = orders.find((candidate) => candidate.id === id);
 
   if (!order || (currentUser?.role !== 'admin' && order.userId !== currentUser?.id)) {
@@ -29,15 +27,6 @@ export function ConfirmationPage() {
   );
   const whatsappUrl = whatsappPhone ? `https://wa.me/${whatsappPhone}?text=${whatsappMessage}` : '';
 
-  const copyOrderCode = async () => {
-    try {
-      await navigator.clipboard.writeText(order.id);
-      setCopyMessage('Código copiado.');
-    } catch {
-      setCopyMessage(`Copia manualmente: ${order.id}`);
-    }
-  };
-
   return (
     <section className="section confirmation-page">
       <div className="container">
@@ -51,7 +40,6 @@ export function ConfirmationPage() {
             <span>Código de pedido</span>
             <strong>{order.id}</strong>
           </div>
-          {copyMessage && <p className="copy-feedback">{copyMessage}</p>}
 
           <div className="confirmation-grid">
             <div>
@@ -87,9 +75,6 @@ export function ConfirmationPage() {
           </div>
 
           <div className="confirmation-actions">
-            <button className="button secondary" type="button" onClick={copyOrderCode}>
-              <Copy size={18} /> Copiar código
-            </button>
             {whatsappUrl && (
               <a className="button secondary" href={whatsappUrl} target="_blank" rel="noreferrer">
                 <MessageCircle size={18} /> Consultar por WhatsApp
