@@ -36,8 +36,8 @@ export function AuthModal({
         await requestPasswordReset(form.email);
         notify({ message: 'Si el correo está registrado, enviaremos instrucciones para restablecer la contraseña.', type: 'success' });
         onClose();
-      } catch {
-        setError('No pudimos procesar la solicitud. Intenta nuevamente en unos minutos.');
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'No pudimos procesar la solicitud. Intenta nuevamente en unos minutos.');
       } finally {
         setSubmitting(false);
       }

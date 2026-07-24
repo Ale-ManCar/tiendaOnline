@@ -142,7 +142,7 @@ export class AuthService {
   ) {
     if (!this.mail.isConfigured) {
       throw new ServiceUnavailableException(
-        'Password recovery email is not configured.',
+        'El servicio de recuperación de contraseña todavía no tiene correo SMTP configurado.',
       );
     }
 
